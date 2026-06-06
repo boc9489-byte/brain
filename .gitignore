@@ -1,0 +1,38 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+
+# Editor-based HTTP Client requests
+/httpRequests/
+/.idea/httpRequests/
+
+# Project documents / local IDE
+file/
+.idea/
+.vscode/
+
+# Secrets / local environment
+.env
+.env.*
+!.env.example
+knowledge/.env
+
+# Python cache / test cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# OS generated files
+.DS_Store
+
+# Runtime generated import artifacts
+knowledge/temp_data/
+knowledge/processor/import_processor/temp_dir/
+knowledge/processor/import_processor/chunks.json
+knowledge/processor/import_processor/*/hybrid_auto/
+knowledge/processor/import_processor/*/.DS_Store
