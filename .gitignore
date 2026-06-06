@@ -36,3 +36,16 @@ knowledge/processor/import_processor/temp_dir/
 knowledge/processor/import_processor/chunks.json
 knowledge/processor/import_processor/*/hybrid_auto/
 knowledge/processor/import_processor/*/.DS_Store
+
+# Fine-tuning local data / runtime artifacts
+fine_tuning/configs/config.yaml
+fine_tuning/data/raw/*.jsonl
+fine_tuning/data/raw/*.json
+fine_tuning/data/processed/*.jsonl
+fine_tuning/data/processed/*.json
+fine_tuning/data/processed/*.md
+fine_tuning/outputs/
+fine_tuning/screenshots/*
+!fine_tuning/screenshots/.gitkeep
+*.safetensors
+checkpoint-*/

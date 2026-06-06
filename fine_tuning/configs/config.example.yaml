@@ -1,0 +1,49 @@
+# Copy this file to fine_tuning/configs/config.yaml for local runs.
+# config.yaml is ignored by Git because it may contain private endpoints or keys.
+
+project:
+  name: "shopkeeper_brain_kb_sft"
+  description: "Stage 1 data pipeline for knowledge-base SFT."
+
+milvus:
+  # Empty values fall back to environment variables loaded from knowledge/.env.
+  uri: ""                  # fallback: MILVUS_URL
+  token: ""
+  db_name: "default"
+  collection: ""           # fallback: CHUNKS_COLLECTION, then kb_chunks
+  expr: ""
+  batch_size: 1000
+  timeout_sec: 20
+  fields:
+    chunk_id: "chunk_id"
+    content: "content"
+    title: "title"
+    parent_title: "parent_title"
+    file_title: "file_title"
+    item_name: "item_name"
+
+llm:
+  # OpenAI-compatible data generator. Leave empty for offline stub mode.
+  base_url: ""
+  api_key: ""
+  model: "qwen-plus"
+  temperature: 0.7
+  max_tokens: 512
+
+dataset:
+  out_dir: "fine_tuning/data"
+  total: 120
+  holdout_ratio: 0.15
+  seed: 42
+  max_chars: 3000
+  ratios:
+    answerable: 0.35
+    multi_chunk: 0.25
+    unanswerable: 0.25
+    conflicting: 0.15
+
+messages:
+  system_prompt: >-
+    你是掌柜智库的知识库问答助手。你只能依据【检索资料】回答问题；
+    当资料不足、资料无关或资料互相冲突时，必须明确拒答并说明缺少什么信息；
+    回答中的事实应使用 [C1]、[C2] 这样的引用编号标注来源。
