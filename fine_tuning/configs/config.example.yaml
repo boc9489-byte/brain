@@ -14,6 +14,12 @@ milvus:
   expr: ""
   batch_size: 1000
   timeout_sec: 20
+  # Stage 2 MilvusRetriever uses the current project schema.
+  vector_field: "dense_vector"
+  metric_type: "COSINE"
+  embed_model: ""            # fallback: BGE_M3_PATH, then BAAI/bge-m3
+  embed_device: "cpu"
+  embed_use_fp16: false
   fields:
     chunk_id: "chunk_id"
     content: "content"
@@ -47,3 +53,25 @@ messages:
     你是掌柜智库的知识库问答助手。你只能依据【检索资料】回答问题；
     当资料不足、资料无关或资料互相冲突时，必须明确拒答并说明缺少什么信息；
     回答中的事实应使用 [C1]、[C2] 这样的引用编号标注来源。
+
+expand:
+  # Stage 2 formal data generation. Use local + dry-run for pipeline checks,
+  # then configure llm and switch to local/milvus without --dry-run.
+  total: 300
+  holdout_ratio: 0.12
+  retriever: "local"         # local | milvus
+  top_k: 4
+  system_prompt: >-
+    你是掌柜智库的产品知识库问答助手。你只能依据【检索资料】回答问题；
+    资料不足、资料无关或资料互相冲突时必须明确拒答，并说明缺少什么信息；
+    回答中的事实应使用 [1]、[2] 这样的编号标注来源。
+  ratios:
+    faithful: 0.30
+    multi_hop: 0.18
+    cite: 0.17
+    refuse: 0.25
+    format: 0.10
+  refuse_subtypes:
+    - "no_recall"
+    - "weak_recall"
+    - "conflict"

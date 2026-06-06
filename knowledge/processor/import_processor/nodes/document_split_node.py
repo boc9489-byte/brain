@@ -6,26 +6,33 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from knowledge.processor.import_processor.base import BaseNode, setup_logging
 from knowledge.processor.import_processor.state import ImportGraphState
-from knowledge.processor.import_processor.exceptions import StateFieldError,FileProcessingError
+from knowledge.processor.import_processor.exceptions import (
+    StateFieldError,
+    FileProcessingError,
+)
 from knowledge.utils.client.ai_clients import AIClients
 from knowledge.utils.client.storage_clients import StorageClients
 from knowledge.utils.markdown_util import MarkdownTableLinearizer
 
-class DocumentSplitNode(BaseNode):
 
+class DocumentSplitNode(BaseNode):
     name = "document_split_node"
 
     def process(self, state: ImportGraphState) -> ImportGraphState:
-        
+
         config = self.config
         # 1.参数校验
-        md_content, file_title, max_content_length, min_content_length =self._validat_state(state, config)
-        
+        md_content, file_title, max_content_length, min_content_length = (
+            self._validat_state(state, config)
+        )
+
         # 2. 根据md 标题切分
-        section:List[Dict[str, Any]] = self._split_by_headings(md_content, file_title)
+        section: List[Dict[str, Any]] = self._split_by_headings(md_content, file_title)
 
         # 3.切分或者合并 - langchain 迭代切分器
-        final_section = self._split_and_merge(section, config.max_content_length, config.min_content_length)
+        final_section = self._split_and_merge(
+            section, config.max_content_length, config.min_content_length
+        )
 
         # 4. 组成chunk对象
         final_chunk = self._assemble_chunks(final_section)
@@ -33,11 +40,11 @@ class DocumentSplitNode(BaseNode):
         self._backup_chunks(state, final_chunk)
 
         # 6 更新state
-        state['chunks'] = final_chunk
+        state["chunks"] = final_chunk
         # 返回
         return state
 
-    def _backup_chunks(self, state:ImportGraphState, sections):
+    def _backup_chunks(self, state: ImportGraphState, sections):
         """将切分结果备份到 JSON 文件"""
         local_dir = state.get("file_dir", "")
         if not local_dir:
@@ -67,15 +74,22 @@ class DocumentSplitNode(BaseNode):
             parent_title = section.get("parent_title")
             file_title = section.get("file_title")
             content = f"{title}\n\n{body}"
-            final_chunk.append({
-                "content":content,
-                "title":title,
-                "parent_title":parent_title,
-                "file_title":file_title
-            })
+            final_chunk.append(
+                {
+                    "content": content,
+                    "title": title,
+                    "parent_title": parent_title,
+                    "file_title": file_title,
+                }
+            )
         return final_chunk
 
-    def _split_and_merge(self, sections:List[Dict[str,Any]], max_content_length:int, min_content_length:int) -> List[Dict[str, Any]]:
+    def _split_and_merge(
+        self,
+        sections: List[Dict[str, Any]],
+        max_content_length: int,
+        min_content_length: int,
+    ) -> List[Dict[str, Any]]:
         """
         切分合并
         Args:
@@ -88,9 +102,11 @@ class DocumentSplitNode(BaseNode):
         """
         current_section = []
         for section in sections:
-            current_section.extend(self._split_long_section(section, max_content_length))
+            current_section.extend(
+                self._split_long_section(section, max_content_length)
+            )
 
-        final_sections = self._merge_short_section(current_section,min_content_length)
+        final_sections = self._merge_short_section(current_section, min_content_length)
 
         return final_sections
 
@@ -102,15 +118,19 @@ class DocumentSplitNode(BaseNode):
 
         # 2. 遍历合并
         for next_section in current_sections[1:]:
-            same_parent = (current_section['parent_title'] == next_section['parent_title'])
+            same_parent = (
+                current_section["parent_title"] == next_section["parent_title"]
+            )
 
-            if same_parent and len(current_section.get('body')) < min_content_length:
+            if same_parent and len(current_section.get("body")) < min_content_length:
                 # 合并 body
-                current_section['body'] = (
-                        current_section.get('body').rstrip() + "\n\n" + next_section.get('body').lstrip()
+                current_section["body"] = (
+                    current_section.get("body").rstrip()
+                    + "\n\n"
+                    + next_section.get("body").lstrip()
                 )
                 # 标题回退为父标题
-                current_section['title'] = current_section['parent_title']
+                current_section["title"] = current_section["parent_title"]
             else:
                 # 封箱
                 final_sections.append(current_section)
@@ -121,8 +141,9 @@ class DocumentSplitNode(BaseNode):
 
         return final_sections
 
-
-    def _split_long_section(self, section:Dict[str, Any], max_content_length:int) -> List[Dict[str, Any]]:
+    def _split_long_section(
+        self, section: Dict[str, Any], max_content_length: int
+    ) -> List[Dict[str, Any]]:
         """
         切分
         Args:
@@ -133,7 +154,7 @@ class DocumentSplitNode(BaseNode):
             List[Dict[str, Any]]
         """
         # 1.获取section 对象
-        body =section.get("body")
+        body = section.get("body")
         title = section.get("title")
         parent_title = section.get("parent_title")
         file_title = section.get("file_title")
@@ -157,37 +178,38 @@ class DocumentSplitNode(BaseNode):
             return [section]
 
         # 5.切分器对象
-        body_length = total_length - len(title_prefix)
+        body_length = max_content_length - len(title_prefix)
         if body_length == 0:
             return [section]
 
         # chunk_s
-        text_spliter = RecursiveCharacterTextSplitter(
-
-            chunk_size= body_length,
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=body_length,
             chunk_overlap=0,
-            separator=["\n\n","\n","。","？","！","，","?","!",";"," ",""],
-            keep_separator=True
+            separators=["\n\n", "\n", "。", "？", "！", "，", "?", "!", ";", " ", ""],
+            keep_separator=True,
         )
         sections = text_splitter.split_text(body)
 
         if len(sections) == 1:
-            return [sections]
+            return [section]
 
         sub_sections = []
-        for index, section in enumerate(sections):
-            sub_sections.append({
-                "body":section,
-                "title":f"{title}_{index+1}",
-                "parent_title":parent_title,
-                "file_title":file_title
-            })
+        for index, text in enumerate(sections):
+            sub_sections.append(
+                {
+                    "body": text,
+                    "title": f"{title}_{index + 1}",
+                    "parent_title": parent_title,
+                    "file_title": file_title,
+                }
+            )
 
         return sub_sections
 
-
-
-    def _split_by_headings(self, md_content: str, file_title: str) -> List[Dict[str, Any]]:
+    def _split_by_headings(
+        self, md_content: str, file_title: str
+    ) -> List[Dict[str, Any]]:
         """
         根据markdown标题切分文档
         """
@@ -198,8 +220,8 @@ class DocumentSplitNode(BaseNode):
         hierarchy = [""] * 7  # 标题层级关系栈
         current_level = 0
 
-        def _flush() -> List[Dict[str,Any]]:
-            """"
+        def _flush() -> List[Dict[str, Any]]:
+            """ "
             收集：1. 标题
                  2. 行信息
                  3. 父标题
@@ -208,32 +230,34 @@ class DocumentSplitNode(BaseNode):
             body = "\n".join(body_lines).strip()
             if current_title or body:
                 parent_title = ""
-                for i in range(current_level -1,0,-1):
+                for i in range(current_level - 1, 0, -1):
                     if hierarchy[i]:
                         parent_title = hierarchy[i]
                         break
-                
+
                 if not parent_title:
                     parent_title = current_title if current_title else file_title
 
-                sections.append({
-                    "body": body,
-                    "title": current_title if current_title else file_title,
-                    "parent_title": parent_title,
-                    "file_title": file_title
-                })
+                sections.append(
+                    {
+                        "body": body,
+                        "title": current_title if current_title else file_title,
+                        "parent_title": parent_title,
+                        "file_title": file_title,
+                    }
+                )
 
         md_lines = md_content.split("\n")
 
         heading_re = re.compile(r"^\s*(#{1,6})\s+(.+)$")
-        
+
         for md_line in md_lines:
-            if md_line.strip().startswith('```') or md_line.strip().startswith('~~~'):
+            if md_line.strip().startswith("```") or md_line.strip().startswith("~~~"):
                 # 遇到代码块，跳过
                 is_fence = not is_fence
 
             match = heading_re.match(md_line) if not is_fence else None
-            
+
             if match:
                 # 将 body_lines 中手机到的行合并成一个 section
                 _flush()
@@ -243,13 +267,12 @@ class DocumentSplitNode(BaseNode):
                 level = len(match.group(1))
                 current_level = level
                 hierarchy[level] = current_title
-                
+
                 # 清空
-                for i in range(level +1 ,7):
+                for i in range(level + 1, 7):
                     hierarchy[i] = ""
                 body_lines = []
             else:
-
                 body_lines.append(md_line)
         _flush()
         return sections
@@ -257,9 +280,9 @@ class DocumentSplitNode(BaseNode):
     def _validat_state(self, state: ImportGraphState, config) -> ImportGraphState:
 
         # 步骤日志
-        self.log_step("step1","validating state")
+        self.log_step("step1", "validating state")
 
-        # 获取md_content 
+        # 获取md_content
         md_content = state.get("md_content")
 
         if md_content:
@@ -268,13 +291,24 @@ class DocumentSplitNode(BaseNode):
         # 获取文档标题
         file_title = state.get("file_title")
 
-        # 判断评估 chunk_size 
-        if config.max_content_length <= 0 or config.min_content_length <= 0 \
-            or config.max_content_length < config.min_content_length:
-            raise ValueError(f"Invalid chunk size: max_content_length={config.max_content_length}, min_content_length={config.min_content_length}")
-        
-        return md_content, file_title, config.max_content_length, config.min_content_length
-    
+        # 判断评估 chunk_size
+        if (
+            config.max_content_length <= 0
+            or config.min_content_length <= 0
+            or config.max_content_length < config.min_content_length
+        ):
+            raise ValueError(
+                f"Invalid chunk size: max_content_length={config.max_content_length}, min_content_length={config.min_content_length}"
+            )
+
+        return (
+            md_content,
+            file_title,
+            config.max_content_length,
+            config.min_content_length,
+        )
+
+
 if __name__ == "__main__":
     setup_logging()
 
@@ -282,11 +316,11 @@ if __name__ == "__main__":
 
     md_path = r"knowledge/processor/import_processor/万用表RS-12的使用/hybrid_auto/万用表RS-12的使用.md"
 
-    with open(md_path,"r",encoding="utf-8") as f:
+    with open(md_path, "r", encoding="utf-8") as f:
         md_content = f.read()
     init_state = {
-        "md_content":md_content,
-        "file_title":"万用表的使用",
-        "file_dir":r"knowledge/processor/import_processor/temp_dir",
+        "md_content": md_content,
+        "file_title": "万用表的使用",
+        "file_dir": r"knowledge/processor/import_processor/temp_dir",
     }
     document_split_node.process(init_state)

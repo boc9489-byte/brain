@@ -1,8 +1,8 @@
-# fine_tuning - 掌柜智库知识库 SFT 阶段一
+# fine_tuning - 掌柜智库知识库 SFT
 
-本目录独立于 `knowledge/processor` 主链路，用来完成知识库生成模型微调的第一阶段：数据闭环。
+本目录独立于 `knowledge/processor` 主链路，用来完成知识库生成模型微调的数据工程、造数、校验和后续训练准备。
 
-第一阶段目标不是训练模型，而是打通从真实知识库到可训练数据的链路：
+阶段一目标不是训练模型，而是打通从真实知识库到可训练数据的链路：
 
 ```text
 Milvus 真实 chunk -> SFT 样本 -> 数据校验 -> messages 训练格式
@@ -25,9 +25,12 @@ fine_tuning/
 │   ├── export_kb_chunks.py
 │   ├── build_sft_dataset.py
 │   ├── validate_dataset.py
-│   └── convert_to_messages.py
+│   ├── convert_to_messages.py
+│   ├── expand_dataset.py
+│   └── validate_messages_dataset.py
 ├── data/
 │   ├── raw/
+│   ├── seed/
 │   └── processed/
 ├── docs/
 ├── train/
@@ -46,6 +49,7 @@ fine_tuning/
 | `docs/stage1_engineering_report.md` | 阶段一工程汇报，用于阶段复盘和对外说明 |
 | `docs/stage1_test_record.md` | 测试记录，记录 Milvus 导出和后续脚本验收 |
 | `docs/stage1_acceptance_checklist.md` | 阶段一验收清单，用于提交前逐项确认 |
+| `docs/stage2_execution_plan.md` | 阶段二强模型正式造数方案，说明架构、数据流、验收和风险 |
 | `docs/daily_progress_2026-06-06.md` | 当天任务进度记录 |
 
 ## 本地运行
@@ -63,7 +67,7 @@ MILVUS_URL
 CHUNKS_COLLECTION
 ```
 
-然后跑第一阶段流水线：
+然后跑阶段一 bootstrap 流水线：
 
 ```bash
 python fine_tuning/scripts/export_kb_chunks.py
@@ -83,6 +87,47 @@ python fine_tuning/scripts/convert_to_messages.py
 
 `--dry-run` 只用于验证流水线。正式训练前要配置强模型重新生成高质量样本。
 
+## 阶段二造数
+
+阶段二新增正式造数候选链路：
+
+```text
+kb_chunks.jsonl
+  -> expand_dataset.py
+  -> sft_train.jsonl / sft_holdout.jsonl
+  -> validate_messages_dataset.py
+```
+
+本地离线验证：
+
+```bash
+python fine_tuning/scripts/expand_dataset.py --retriever local --dry-run --total 40
+python fine_tuning/scripts/validate_messages_dataset.py
+```
+
+正式强模型造数：
+
+```bash
+# 在 fine_tuning/configs/config.yaml 填写 llm.base_url / llm.api_key / llm.model
+python fine_tuning/scripts/expand_dataset.py --retriever local
+python fine_tuning/scripts/validate_messages_dataset.py
+```
+
+Milvus 召回造数：
+
+```bash
+python fine_tuning/scripts/expand_dataset.py --retriever milvus
+python fine_tuning/scripts/validate_messages_dataset.py
+```
+
+注意：
+
+```text
+1. 当前项目的 Milvus 向量字段是 dense_vector，不是 embedding；
+2. local + dry-run 仍只验证工程通路，不能直接训练；
+3. 正式数据需要强模型生成，并做至少 10% 人工抽检。
+```
+
 ## 产物
 
 运行后会生成：
@@ -95,6 +140,10 @@ fine_tuning/data/processed/holdout.jsonl
 fine_tuning/data/processed/messages_train.jsonl
 fine_tuning/data/processed/messages_holdout.jsonl
 fine_tuning/data/processed/_validation_report.md
+fine_tuning/data/processed/sft_train.jsonl
+fine_tuning/data/processed/sft_holdout.jsonl
+fine_tuning/data/processed/_expand_stats.json
+fine_tuning/data/processed/_messages_validation_report.md
 ```
 
 这些数据文件默认不会提交到 Git。

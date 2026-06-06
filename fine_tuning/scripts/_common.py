@@ -24,8 +24,11 @@ from typing import Any, Dict, Iterable, List, Optional
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG_PATH = "fine_tuning/configs/config.yaml"
 
-# 训练样本中要求答案引用上下文片段，例如 [C1]、[C2]。
+# 阶段一中间格式使用 [C1]、[C2]。
 CITE_RE = re.compile(r"\[(C\d+)\]")
+
+# 阶段二 messages 格式使用 [1]、[2]，更贴近检索资料编号。
+NUM_CITE_RE = re.compile(r"\[(\d+)\]")
 
 # 用于拒答样本的启发式检查：拒答答案不应凭空编造上下文里没有的数字。
 NUM_RE = re.compile(r"\d+(?:\.\d+)?")
@@ -70,6 +73,11 @@ def load_project_env() -> None:
 def citations_in(text: str) -> set[str]:
     """提取答案中使用过的引用编号。"""
     return set(CITE_RE.findall(text or ""))
+
+
+def num_citations_in(text: str) -> set[str]:
+    """提取 messages 格式答案中使用过的数字引用编号。"""
+    return set(NUM_CITE_RE.findall(text or ""))
 
 
 def numbers_in(text: str) -> set[str]:
@@ -128,6 +136,14 @@ def apply_env_defaults(cfg: Dict[str, Any]) -> Dict[str, Any]:
     milvus.setdefault("expr", "")
     milvus.setdefault("batch_size", 1000)
     milvus.setdefault("timeout_sec", 20)
+    # 当前主项目 chunk collection 的向量字段名是 dense_vector / sparse_vector。
+    # 阶段二 MilvusRetriever 默认走 dense_vector，避免套用外部示例里的 embedding 字段。
+    milvus["vector_field"] = milvus.get("vector_field") or "dense_vector"
+    milvus["metric_type"] = milvus.get("metric_type") or "COSINE"
+    milvus["embed_model"] = milvus.get("embed_model") or os.getenv("BGE_M3_PATH", "BAAI/bge-m3")
+    milvus["embed_device"] = milvus.get("embed_device") or os.getenv("BGE_DEVICE", "cpu")
+    if "embed_use_fp16" not in milvus:
+        milvus["embed_use_fp16"] = os.getenv("BGE_FP16", "false").lower() in ("true", "1")
 
     dataset = cfg.setdefault("dataset", {})
     dataset.setdefault("out_dir", "fine_tuning/data")
@@ -147,6 +163,30 @@ def apply_env_defaults(cfg: Dict[str, Any]) -> Dict[str, Any]:
 
     cfg.setdefault("llm", {})
     cfg.setdefault("messages", {})
+    expand = cfg.setdefault("expand", {})
+    expand.setdefault("total", 300)
+    expand.setdefault("holdout_ratio", 0.12)
+    expand.setdefault("retriever", "local")
+    expand.setdefault("top_k", 4)
+    expand.setdefault(
+        "system_prompt",
+        (
+            "你是掌柜智库的产品知识库问答助手。你只能依据【检索资料】回答问题；"
+            "资料不足、资料无关或资料互相冲突时必须明确拒答，并说明缺少什么信息；"
+            "回答中的事实应使用 [1]、[2] 这样的编号标注来源。"
+        ),
+    )
+    expand.setdefault(
+        "ratios",
+        {
+            "faithful": 0.30,
+            "multi_hop": 0.18,
+            "cite": 0.17,
+            "refuse": 0.25,
+            "format": 0.10,
+        },
+    )
+    expand.setdefault("refuse_subtypes", ["no_recall", "weak_recall", "conflict"])
     return cfg
 
 
@@ -207,6 +247,28 @@ def get_llm(cfg: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         "temperature": llm_cfg.get("temperature", 0.7),
         "max_tokens": llm_cfg.get("max_tokens", 512),
     }
+
+
+def llm_text(llm: Dict[str, Any], system: str, user: str) -> Optional[str]:
+    """调用强模型生成纯文本。
+
+    阶段二的 expand_dataset.py 需要让模型先生成自然问题，再生成答案。这里和
+    llm_json 分开，避免把“文本生成”和“JSON 解析”混在一个函数里。
+    """
+    try:
+        resp = llm["client"].chat.completions.create(
+            model=llm["model"],
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            temperature=llm["temperature"],
+            max_tokens=llm["max_tokens"],
+        )
+        return (resp.choices[0].message.content or "").strip()
+    except Exception as exc:
+        print(f"[warn] LLM generation failed: {exc}")
+        return None
 
 
 def llm_json(llm: Dict[str, Any], system: str, user: str) -> Optional[Dict[str, Any]]:

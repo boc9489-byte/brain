@@ -44,6 +44,7 @@ fine_tuning/data/raw/*.json
 fine_tuning/data/processed/*.jsonl
 fine_tuning/data/processed/*.json
 fine_tuning/data/processed/*.md
+fine_tuning/data/eval/
 fine_tuning/outputs/
 fine_tuning/screenshots/*
 !fine_tuning/screenshots/.gitkeep
