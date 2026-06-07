@@ -69,7 +69,10 @@ class HFGenerator:
             import torch
             from transformers import AutoModelForCausalLM, AutoTokenizer
         except ImportError as exc:
-            raise SystemExit("Missing inference dependencies. Install requirements-train.txt in a model environment.") from exc
+            raise SystemExit(
+                "Missing inference dependencies. Install them with "
+                "`uv pip install -r fine_tuning/requirements-train.txt` in a model environment."
+            ) from exc
 
         self.torch = torch
         self.max_new_tokens = max_new_tokens
@@ -84,7 +87,10 @@ class HFGenerator:
             try:
                 from peft import PeftModel
             except ImportError as exc:
-                raise SystemExit("Missing peft. Install requirements-train.txt before loading adapter.") from exc
+                raise SystemExit(
+                    "Missing peft. Install it with `uv pip install -r fine_tuning/requirements-train.txt` "
+                    "before loading adapter."
+                ) from exc
             self.model = PeftModel.from_pretrained(self.model, adapter_path)
         self.model.eval()
 

@@ -9,9 +9,9 @@
       -> sft_holdout.jsonl
 
 运行方式：
-    python fine_tuning/scripts/expand_dataset.py --retriever local --dry-run
-    python fine_tuning/scripts/expand_dataset.py --retriever local
-    python fine_tuning/scripts/expand_dataset.py --retriever milvus
+    uv run python fine_tuning/scripts/expand_dataset.py --retriever local --dry-run
+    uv run python fine_tuning/scripts/expand_dataset.py --retriever local
+    uv run python fine_tuning/scripts/expand_dataset.py --retriever milvus
 
 说明：
     --dry-run 仍然只验证工程通路，不是正式训练数据；
@@ -175,7 +175,10 @@ class MilvusRetriever:
             from pymilvus import MilvusClient
             from pymilvus.model.hybrid import BGEM3EmbeddingFunction
         except ImportError as exc:
-            raise SystemExit("MilvusRetriever requires pymilvus with BGEM3EmbeddingFunction.") from exc
+            raise SystemExit(
+                "MilvusRetriever requires pymilvus with BGEM3EmbeddingFunction. "
+                "Install it with `uv pip install -r fine_tuning/requirements-runtime.txt`."
+            ) from exc
 
         client_kwargs = {"uri": milvus_cfg["uri"]}
         if milvus_cfg.get("token"):

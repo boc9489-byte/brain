@@ -1,0 +1,8 @@
+# Fine-tuning data/eval runtime dependencies for local uv environments.
+# This is the light-weight environment for export/build/validate/eval checks,
+# not the GPU training environment.
+
+pyyaml>=6.0
+python-dotenv>=1.0
+openai>=1.0
+pymilvus[model]>=2.4

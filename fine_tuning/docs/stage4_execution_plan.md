@@ -145,13 +145,13 @@ sft_holdout.jsonl
 本地 stub 验证：
 
 ```bash
-python fine_tuning/scripts/eval_before_after.py --stub
+uv run python fine_tuning/scripts/eval_before_after.py --stub
 ```
 
 真实模型评估：
 
 ```bash
-python fine_tuning/scripts/eval_before_after.py \
+uv run --active python fine_tuning/scripts/eval_before_after.py \
   --base Qwen/Qwen2.5-3B-Instruct \
   --adapter fine_tuning/outputs/kb-sft
 ```
@@ -159,7 +159,7 @@ python fine_tuning/scripts/eval_before_after.py \
 可选 judge：
 
 ```bash
-python fine_tuning/scripts/eval_before_after.py \
+uv run --active python fine_tuning/scripts/eval_before_after.py \
   --base Qwen/Qwen2.5-3B-Instruct \
   --adapter fine_tuning/outputs/kb-sft \
   --judge
@@ -195,4 +195,3 @@ python fine_tuning/scripts/eval_before_after.py \
 4. 核心 bad case 有人工复核；
 5. adapter 路径、评估报告、回滚方式明确。
 ```
-

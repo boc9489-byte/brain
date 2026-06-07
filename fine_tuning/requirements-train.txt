@@ -1,6 +1,9 @@
 # Stage 3 training dependencies.
-# Install these in a separate GPU environment, not in the langchain runtime.
+# Install these with uv in a separate GPU environment.
 
+pyyaml>=6.0
+python-dotenv>=1.0
+openai>=1.0
 torch>=2.1
 transformers==4.46.*
 trl==0.12.*
@@ -9,4 +12,3 @@ bitsandbytes==0.44.*
 datasets>=2.18
 accelerate>=0.30
 safetensors>=0.4
-

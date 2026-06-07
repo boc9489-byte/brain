@@ -17,7 +17,7 @@ kb_chunks.jsonl
 
 ```text
 项目路径：/Users/bob/PycharmProjects/shopkeeper_brain
-conda 环境：langchain
+uv 环境：.venv
 配置来源：fine_tuning/configs/config.example.yaml + knowledge/.env 兜底
 raw chunk：fine_tuning/data/raw/kb_chunks.jsonl
 ```
@@ -27,8 +27,8 @@ raw chunk：fine_tuning/data/raw/kb_chunks.jsonl
 测试命令：
 
 ```bash
-python -m py_compile fine_tuning/scripts/_common.py fine_tuning/scripts/expand_dataset.py fine_tuning/scripts/validate_messages_dataset.py fine_tuning/tests/test_stage2_pipeline.py
-python fine_tuning/tests/test_stage2_pipeline.py
+uv run python -m py_compile fine_tuning/scripts/_common.py fine_tuning/scripts/expand_dataset.py fine_tuning/scripts/validate_messages_dataset.py fine_tuning/tests/test_stage2_pipeline.py
+uv run python fine_tuning/tests/test_stage2_pipeline.py
 ```
 
 实际输出：
@@ -48,7 +48,7 @@ python fine_tuning/tests/test_stage2_pipeline.py
 测试命令：
 
 ```bash
-conda run --no-capture-output -n langchain python fine_tuning/scripts/expand_dataset.py --retriever local --dry-run --total 40
+uv run python fine_tuning/scripts/expand_dataset.py --retriever local --dry-run --total 40
 ```
 
 实际输出摘要：
@@ -92,7 +92,7 @@ local + dry-run 只用于验证阶段二 messages 造数通路。
 测试命令：
 
 ```bash
-conda run --no-capture-output -n langchain python fine_tuning/scripts/validate_messages_dataset.py
+uv run python fine_tuning/scripts/validate_messages_dataset.py
 ```
 
 实际输出摘要：
@@ -129,15 +129,14 @@ refuse 子类: conflict=3, no_recall=4, weak_recall=3
 ```bash
 cp fine_tuning/configs/config.example.yaml fine_tuning/configs/config.yaml
 # 填写 llm.base_url / llm.api_key / llm.model
-conda run --no-capture-output -n langchain python fine_tuning/scripts/expand_dataset.py --retriever local
-conda run --no-capture-output -n langchain python fine_tuning/scripts/validate_messages_dataset.py
+uv run python fine_tuning/scripts/expand_dataset.py --retriever local
+uv run python fine_tuning/scripts/validate_messages_dataset.py
 ```
 
 如要验证 Milvus 召回版本：
 
 ```bash
-conda run --no-capture-output -n langchain python fine_tuning/scripts/expand_dataset.py --retriever milvus
+uv run python fine_tuning/scripts/expand_dataset.py --retriever milvus
 ```
 
 注意当前项目 Milvus 向量字段为 `dense_vector`。
-

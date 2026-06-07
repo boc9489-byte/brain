@@ -2,7 +2,7 @@
 """从 Milvus 导出知识库 chunk，作为 SFT 数据构造的真实知识来源。
 
 在仓库根目录执行：
-    python fine_tuning/scripts/export_kb_chunks.py
+    uv run python fine_tuning/scripts/export_kb_chunks.py
 
 输出：
     fine_tuning/data/raw/kb_chunks.jsonl
@@ -111,7 +111,9 @@ def main() -> None:
     try:
         from pymilvus import MilvusClient
     except ImportError as exc:
-        raise SystemExit("Missing dependency: pymilvus. Install it in the active environment.") from exc
+        raise SystemExit(
+            "Missing dependency: pymilvus. Install it with `uv pip install -r fine_tuning/requirements-runtime.txt`."
+        ) from exc
 
     client_kwargs = {"uri": uri}
     if milvus_cfg.get("token"):

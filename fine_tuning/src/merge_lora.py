@@ -55,7 +55,8 @@ def merge(settings: Dict[str, str], base_override: str | None) -> None:
         from transformers import AutoModelForCausalLM, AutoTokenizer
     except ImportError as exc:
         raise SystemExit(
-            "Missing merge dependencies. Install fine_tuning/requirements-train.txt in a GPU environment."
+            "Missing merge dependencies. Install them with "
+            "`uv pip install -r fine_tuning/requirements-train.txt` in a GPU environment."
         ) from exc
 
     base_model = base_override or settings["base_model"]
@@ -104,4 +105,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

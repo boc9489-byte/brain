@@ -26,7 +26,7 @@ sft_train.jsonl
 测试命令：
 
 ```bash
-python -m py_compile fine_tuning/src/train_sft.py fine_tuning/src/merge_lora.py
+uv run python -m py_compile fine_tuning/src/train_sft.py fine_tuning/src/merge_lora.py
 ```
 
 验收标准：
@@ -46,7 +46,7 @@ python -m py_compile fine_tuning/src/train_sft.py fine_tuning/src/merge_lora.py
 测试命令：
 
 ```bash
-python fine_tuning/src/train_sft.py --check-only
+uv run python fine_tuning/src/train_sft.py --check-only
 ```
 
 验收标准：
@@ -82,7 +82,7 @@ python fine_tuning/src/train_sft.py --check-only
 测试命令：
 
 ```bash
-python fine_tuning/src/merge_lora.py --check-only
+uv run python fine_tuning/src/merge_lora.py --check-only
 ```
 
 验收标准：

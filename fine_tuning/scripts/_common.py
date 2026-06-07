@@ -20,7 +20,7 @@ from typing import Any, Dict, Iterable, List, Optional
 
 
 # 脚本约定从仓库根目录运行，但这里仍然用文件路径反推根目录，
-# 这样在 PyCharm / conda run / CI 里执行时不依赖当前 shell 的 cwd。
+# 这样在 PyCharm / uv run / CI 里执行时不依赖当前 shell 的 cwd。
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG_PATH = "fine_tuning/configs/config.yaml"
 
@@ -103,7 +103,7 @@ def load_config(path: str = DEFAULT_CONFIG_PATH) -> Dict[str, Any]:
     try:
         import yaml
     except ImportError as exc:
-        raise SystemExit("Missing dependency: pyyaml. Install it with `pip install pyyaml`.") from exc
+        raise SystemExit("Missing dependency: pyyaml. Install it with `uv pip install pyyaml`.") from exc
 
     config_path = REPO_ROOT / path
     if not config_path.exists():

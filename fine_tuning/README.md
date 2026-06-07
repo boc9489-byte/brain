@@ -28,7 +28,8 @@ fine_tuning/
 │   ├── convert_to_messages.py
 │   ├── expand_dataset.py
 │   ├── validate_messages_dataset.py
-│   └── eval_before_after.py
+│   ├── eval_before_after.py
+│   └── check_stage5_serving.py
 ├── src/
 │   ├── train_sft.py
 │   └── merge_lora.py
@@ -59,11 +60,21 @@ fine_tuning/
 | `docs/stage3_test_record.md` | 阶段三训练脚本 check-only 测试记录 |
 | `docs/stage4_execution_plan.md` | 阶段四 Base vs SFT 离线评估方案 |
 | `docs/stage4_test_record.md` | 阶段四 stub 评估和指标测试记录 |
+| `docs/stage5_execution_plan.md` | 阶段五 vLLM LoRA 接回业务方案 |
+| `docs/stage5_test_record.md` | 阶段五配置开关和接入检查记录 |
 | `docs/daily_progress_2026-06-06.md` | 当天任务进度记录 |
 
 ## 本地运行
 
 在仓库根目录执行：
+
+```bash
+uv venv --python 3.12
+source .venv/bin/activate
+uv pip install -r fine_tuning/requirements-runtime.txt
+```
+
+准备本地配置：
 
 ```bash
 cp fine_tuning/configs/config.example.yaml fine_tuning/configs/config.yaml
@@ -79,10 +90,10 @@ CHUNKS_COLLECTION
 然后跑阶段一 bootstrap 流水线：
 
 ```bash
-python fine_tuning/scripts/export_kb_chunks.py
-python fine_tuning/scripts/build_sft_dataset.py --dry-run
-python fine_tuning/scripts/validate_dataset.py
-python fine_tuning/scripts/convert_to_messages.py
+uv run python fine_tuning/scripts/export_kb_chunks.py
+uv run python fine_tuning/scripts/build_sft_dataset.py --dry-run
+uv run python fine_tuning/scripts/validate_dataset.py
+uv run python fine_tuning/scripts/convert_to_messages.py
 ```
 
 命令说明：
@@ -110,23 +121,23 @@ kb_chunks.jsonl
 本地离线验证：
 
 ```bash
-python fine_tuning/scripts/expand_dataset.py --retriever local --dry-run --total 40
-python fine_tuning/scripts/validate_messages_dataset.py
+uv run python fine_tuning/scripts/expand_dataset.py --retriever local --dry-run --total 40
+uv run python fine_tuning/scripts/validate_messages_dataset.py
 ```
 
 正式强模型造数：
 
 ```bash
 # 在 fine_tuning/configs/config.yaml 填写 llm.base_url / llm.api_key / llm.model
-python fine_tuning/scripts/expand_dataset.py --retriever local
-python fine_tuning/scripts/validate_messages_dataset.py
+uv run python fine_tuning/scripts/expand_dataset.py --retriever local
+uv run python fine_tuning/scripts/validate_messages_dataset.py
 ```
 
 Milvus 召回造数：
 
 ```bash
-python fine_tuning/scripts/expand_dataset.py --retriever milvus
-python fine_tuning/scripts/validate_messages_dataset.py
+uv run python fine_tuning/scripts/expand_dataset.py --retriever milvus
+uv run python fine_tuning/scripts/validate_messages_dataset.py
 ```
 
 注意：
@@ -150,24 +161,24 @@ sft_train.jsonl
 本地只做检查，不加载模型：
 
 ```bash
-python fine_tuning/src/train_sft.py --check-only
-python fine_tuning/src/merge_lora.py --check-only
+uv run python fine_tuning/src/train_sft.py --check-only
+uv run python fine_tuning/src/merge_lora.py --check-only
 ```
 
 GPU 环境训练：
 
 ```bash
-conda create -n kb-sft python=3.10
-conda activate kb-sft
-pip install -r fine_tuning/requirements-train.txt
+uv venv --python 3.10 .venv-kb-sft
+source .venv-kb-sft/bin/activate
+uv pip install -r fine_tuning/requirements-train.txt
 
-python fine_tuning/src/train_sft.py --config fine_tuning/configs/config.yaml
+uv run --active python fine_tuning/src/train_sft.py --config fine_tuning/configs/config.yaml
 ```
 
 可选合并 LoRA：
 
 ```bash
-python fine_tuning/src/merge_lora.py --config fine_tuning/configs/config.yaml
+uv run --active python fine_tuning/src/merge_lora.py --config fine_tuning/configs/config.yaml
 ```
 
 注意：
@@ -192,19 +203,19 @@ sft_holdout.jsonl
 本地 stub 验证：
 
 ```bash
-python fine_tuning/scripts/eval_before_after.py --stub
+uv run python fine_tuning/scripts/eval_before_after.py --stub
 ```
 
 只检查输入输出，不加载模型：
 
 ```bash
-python fine_tuning/scripts/eval_before_after.py --check-only
+uv run python fine_tuning/scripts/eval_before_after.py --check-only
 ```
 
 真实模型评估：
 
 ```bash
-python fine_tuning/scripts/eval_before_after.py \
+uv run --active python fine_tuning/scripts/eval_before_after.py \
   --base Qwen/Qwen2.5-3B-Instruct \
   --adapter fine_tuning/outputs/kb-sft
 ```
@@ -212,7 +223,7 @@ python fine_tuning/scripts/eval_before_after.py \
 可选 LLM judge：
 
 ```bash
-python fine_tuning/scripts/eval_before_after.py \
+uv run --active python fine_tuning/scripts/eval_before_after.py \
   --base Qwen/Qwen2.5-3B-Instruct \
   --adapter fine_tuning/outputs/kb-sft \
   --judge
@@ -228,6 +239,60 @@ faithfulness
 completeness
 bad_cases
 ```
+
+## 阶段五接入
+
+阶段五新增 Base / SFT 回答模型开关：
+
+```text
+AnswerOutPutNode
+  -> AIClients.get_answer_llm_client()
+  -> ANSWER_MODEL_PROVIDER=base | sft
+  -> vLLM OpenAI-compatible service
+```
+
+默认回退到 base：
+
+```bash
+ANSWER_MODEL_PROVIDER=base
+ANSWER_OPENAI_API_BASE=http://127.0.0.1:8000/v1
+ANSWER_BASE_MODEL=Qwen/Qwen2.5-3B-Instruct
+```
+
+启用 SFT：
+
+```bash
+ANSWER_MODEL_PROVIDER=sft
+ANSWER_OPENAI_API_BASE=http://127.0.0.1:8000/v1
+ANSWER_BASE_MODEL=Qwen/Qwen2.5-3B-Instruct
+ANSWER_SFT_MODEL=kb-sft
+```
+
+vLLM LoRA 启动参考：
+
+```bash
+python -m vllm.entrypoints.openai.api_server \
+  --host 0.0.0.0 \
+  --port 8000 \
+  --model Qwen/Qwen2.5-3B-Instruct \
+  --served-model-name Qwen/Qwen2.5-3B-Instruct \
+  --enable-lora \
+  --lora-modules kb-sft=/path/to/fine_tuning/outputs/kb-sft
+```
+
+本地配置检查：
+
+```bash
+uv run python fine_tuning/scripts/check_stage5_serving.py --check-only
+```
+
+可选服务健康检查：
+
+```bash
+uv run python fine_tuning/scripts/check_stage5_serving.py --health
+```
+
+阶段五只应在阶段四离线评估通过后打开 `ANSWER_MODEL_PROVIDER=sft`。
 
 ## 产物
 

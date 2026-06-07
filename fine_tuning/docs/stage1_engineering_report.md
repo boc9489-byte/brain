@@ -77,10 +77,10 @@ messages_holdout=10
 ## 6. 验收命令
 
 ```bash
-python fine_tuning/scripts/export_kb_chunks.py
-python fine_tuning/scripts/build_sft_dataset.py --dry-run
-python fine_tuning/scripts/validate_dataset.py
-python fine_tuning/scripts/convert_to_messages.py
+uv run python fine_tuning/scripts/export_kb_chunks.py
+uv run python fine_tuning/scripts/build_sft_dataset.py --dry-run
+uv run python fine_tuning/scripts/validate_dataset.py
+uv run python fine_tuning/scripts/convert_to_messages.py
 ```
 
 当前验收状态：

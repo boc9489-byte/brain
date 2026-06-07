@@ -19,7 +19,7 @@ sft_holdout.jsonl
 
 ```text
 项目路径：/Users/bob/PycharmProjects/shopkeeper_brain
-conda 环境：langchain
+uv 环境：.venv
 输入数据：fine_tuning/data/processed/sft_holdout.jsonl
 输出目录：fine_tuning/data/eval
 ```
@@ -29,7 +29,7 @@ conda 环境：langchain
 测试命令：
 
 ```bash
-python -m py_compile fine_tuning/scripts/eval_before_after.py
+uv run python -m py_compile fine_tuning/scripts/eval_before_after.py
 ```
 
 验收标准：
@@ -47,7 +47,7 @@ python -m py_compile fine_tuning/scripts/eval_before_after.py
 指标单测：
 
 ```bash
-python fine_tuning/tests/test_stage4_eval.py
+uv run python fine_tuning/tests/test_stage4_eval.py
 ```
 
 实际输出：
@@ -61,7 +61,7 @@ python fine_tuning/tests/test_stage4_eval.py
 测试命令：
 
 ```bash
-conda run --no-capture-output -n langchain python fine_tuning/scripts/eval_before_after.py --check-only
+uv run python fine_tuning/scripts/eval_before_after.py --check-only
 ```
 
 验收标准：
@@ -93,7 +93,7 @@ conda run --no-capture-output -n langchain python fine_tuning/scripts/eval_befor
 测试命令：
 
 ```bash
-conda run --no-capture-output -n langchain python fine_tuning/scripts/eval_before_after.py --stub
+uv run python fine_tuning/scripts/eval_before_after.py --stub
 ```
 
 验收标准：

@@ -77,7 +77,7 @@ fine_tuning/outputs/kb-sft
 |---|---|---|---|---|
 | `train_sft.py` | QLoRA 训练入口 | `sft_train.jsonl`、config | LoRA adapter | torch、transformers、trl、peft、bitsandbytes |
 | `merge_lora.py` | 合并 adapter 到 base | base model、adapter | merged model | transformers、peft |
-| `requirements-train.txt` | 训练环境依赖 | 无 | 依赖清单 | pip/conda |
+| `requirements-train.txt` | 训练环境依赖 | 无 | 依赖清单 | uv |
 | `config.example.yaml` | 训练参数模板 | 无 | train 配置 | YAML |
 | `stage3_test_record.md` | 本地检查记录 | check 命令输出 | 验收记录 | 无 |
 
@@ -150,12 +150,12 @@ check-only 用于本地 Mac 或无 GPU 环境做提交前检查。
 
 ## 8. 环境设计
 
-建议单独创建训练环境，不污染 `langchain`：
+建议单独创建 uv 训练环境，不污染本地导入/造数环境：
 
 ```bash
-conda create -n kb-sft python=3.10
-conda activate kb-sft
-pip install -r fine_tuning/requirements-train.txt
+uv venv --python 3.10 .venv-kb-sft
+source .venv-kb-sft/bin/activate
+uv pip install -r fine_tuning/requirements-train.txt
 ```
 
 训练环境建议：
@@ -172,20 +172,20 @@ CUDA / PyTorch / bitsandbytes 版本匹配
 本地 check：
 
 ```bash
-python fine_tuning/src/train_sft.py --check-only
-python fine_tuning/src/merge_lora.py --check-only
+uv run python fine_tuning/src/train_sft.py --check-only
+uv run python fine_tuning/src/merge_lora.py --check-only
 ```
 
 GPU 训练：
 
 ```bash
-python fine_tuning/src/train_sft.py --config fine_tuning/configs/config.yaml
+uv run --active python fine_tuning/src/train_sft.py --config fine_tuning/configs/config.yaml
 ```
 
 可选合并：
 
 ```bash
-python fine_tuning/src/merge_lora.py --config fine_tuning/configs/config.yaml
+uv run --active python fine_tuning/src/merge_lora.py --config fine_tuning/configs/config.yaml
 ```
 
 ## 10. 阶段三通过标准
@@ -225,4 +225,3 @@ Base model + LoRA adapter
   -> faithfulness
   -> answer_completeness
 ```
-

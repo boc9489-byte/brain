@@ -337,12 +337,14 @@ fine_tuning/
 
 ```bash
 cd /Users/bob/PycharmProjects/shopkeeper_brain
-conda activate langchain
+uv venv --python 3.12
+source .venv/bin/activate
+uv pip install -r fine_tuning/requirements-runtime.txt
 cp fine_tuning/configs/config.example.yaml fine_tuning/configs/config.yaml
-python fine_tuning/scripts/export_kb_chunks.py
-python fine_tuning/scripts/build_sft_dataset.py --dry-run
-python fine_tuning/scripts/validate_dataset.py
-python fine_tuning/scripts/convert_to_messages.py
+uv run python fine_tuning/scripts/export_kb_chunks.py
+uv run python fine_tuning/scripts/build_sft_dataset.py --dry-run
+uv run python fine_tuning/scripts/validate_dataset.py
+uv run python fine_tuning/scripts/convert_to_messages.py
 ```
 
 查看产物：
@@ -450,6 +452,31 @@ answer_completeness
 4. 线上观测引用越界率、拒答率、误拒率和用户反馈。
 ```
 
+阶段五实际接入点：
+
+```text
+AnswerOutPutNode
+  -> AIClients.get_answer_llm_client()
+  -> ANSWER_MODEL_PROVIDER=base | sft
+  -> vLLM OpenAI-compatible /v1/chat/completions
+```
+
+关键环境变量：
+
+```bash
+ANSWER_MODEL_PROVIDER=base
+ANSWER_OPENAI_API_BASE=http://127.0.0.1:8000/v1
+ANSWER_BASE_MODEL=Qwen/Qwen2.5-3B-Instruct
+ANSWER_SFT_MODEL=kb-sft
+```
+
+检查命令：
+
+```bash
+uv run python fine_tuning/scripts/check_stage5_serving.py --check-only
+uv run python fine_tuning/scripts/check_stage5_serving.py --health
+```
+
 ## 15. 风险与应对
 
 | 风险 | 影响 | 应对 |
@@ -462,7 +489,7 @@ answer_completeness
 | 只做四类样本 | 缺少格式适配能力 | 阶段一增强补 format |
 | holdout 太小 | 评估不稳定 | 正式阶段扩到 100-150 条 |
 | 配置泄露 | 安全风险 | config.yaml 加入 `.gitignore` |
-| 训练依赖污染业务环境 | 影响 langchain 环境 | 训练阶段单独使用 kb-sft 环境 |
+| 训练依赖污染业务环境 | 影响本地导入/造数环境 | 训练阶段单独使用 `.venv-kb-sft` |
 | LoRA 接入不稳定 | 线上风险 | 支持 base / sft 切换和回滚 |
 
 ## 16. 企业工程验收标准

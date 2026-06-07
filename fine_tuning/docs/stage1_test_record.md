@@ -17,7 +17,7 @@ export_kb_chunks.py
 
 ```text
 项目路径：/Users/bob/PycharmProjects/shopkeeper_brain
-conda 环境：langchain
+uv 环境：.venv
 Milvus 地址：http://10.211.55.4:19530
 Milvus collection：kb_chunks
 配置来源：fine_tuning/configs/config.example.yaml + knowledge/.env 环境变量兜底
@@ -27,7 +27,9 @@ Milvus collection：kb_chunks
 
 ```bash
 cd /Users/bob/PycharmProjects/shopkeeper_brain
-conda activate langchain
+uv venv --python 3.12
+source .venv/bin/activate
+uv pip install -r fine_tuning/requirements-runtime.txt
 ```
 
 ## 3. 测试用例 1：导出真实 Milvus chunk
@@ -35,7 +37,7 @@ conda activate langchain
 测试命令：
 
 ```bash
-python fine_tuning/scripts/export_kb_chunks.py
+uv run python fine_tuning/scripts/export_kb_chunks.py
 ```
 
 实际输出：
@@ -79,7 +81,7 @@ kb_chunks collection 可查询
 测试命令：
 
 ```bash
-python fine_tuning/scripts/build_sft_dataset.py --dry-run
+uv run python fine_tuning/scripts/build_sft_dataset.py --dry-run
 ```
 
 实际输出：
@@ -134,7 +136,7 @@ fine_tuning/data/processed/_build_stats.json
 测试命令：
 
 ```bash
-python fine_tuning/scripts/validate_dataset.py
+uv run python fine_tuning/scripts/validate_dataset.py
 ```
 
 预期产物：
@@ -202,7 +204,7 @@ train / holdout 重复
 测试命令：
 
 ```bash
-python fine_tuning/scripts/convert_to_messages.py
+uv run python fine_tuning/scripts/convert_to_messages.py
 ```
 
 实际输出：

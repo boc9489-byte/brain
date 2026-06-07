@@ -18,7 +18,7 @@ Milvus chunk
 
 | 检查项 | 标准 | 状态 |
 |---|---|---|
-| conda 环境 | 可激活 `langchain` | 已通过 |
+| uv 环境 | `.venv` 可运行 fine_tuning 脚本 | 已通过 |
 | Milvus 地址 | `MILVUS_URL` 可访问 | 已通过：`http://10.211.55.4:19530` |
 | collection | `CHUNKS_COLLECTION` 指向 `kb_chunks` 或实际 chunk collection | 已通过：`kb_chunks` |
 | 配置文件 | `config.example.yaml` 不含密钥 | 已通过 |
@@ -28,10 +28,10 @@ Milvus chunk
 
 | 脚本 | 命令 | 验收标准 | 状态 |
 |---|---|---|---|
-| 导出 chunk | `python fine_tuning/scripts/export_kb_chunks.py` | exported > 0 | 已通过 |
-| 构造样本 | `python fine_tuning/scripts/build_sft_dataset.py --dry-run` | actual_total > 0 | 已通过：actual_total=59 |
-| 校验数据 | `python fine_tuning/scripts/validate_dataset.py` | 硬错误 = 0 | 已通过：硬错误 0 |
-| 转 messages | `python fine_tuning/scripts/convert_to_messages.py` | 生成 messages_train / messages_holdout | 已通过：49 / 10 |
+| 导出 chunk | `uv run python fine_tuning/scripts/export_kb_chunks.py` | exported > 0 | 已通过 |
+| 构造样本 | `uv run python fine_tuning/scripts/build_sft_dataset.py --dry-run` | actual_total > 0 | 已通过：actual_total=59 |
+| 校验数据 | `uv run python fine_tuning/scripts/validate_dataset.py` | 硬错误 = 0 | 已通过：硬错误 0 |
+| 转 messages | `uv run python fine_tuning/scripts/convert_to_messages.py` | 生成 messages_train / messages_holdout | 已通过：49 / 10 |
 
 ## 4. 数据产物验收
 

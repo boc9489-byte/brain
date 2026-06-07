@@ -174,8 +174,8 @@ Milvus 检索失败 -> 使用 local dry-run 验证，不作为正式造数
 本地离线验证：
 
 ```bash
-python fine_tuning/scripts/expand_dataset.py --retriever local --dry-run
-python fine_tuning/scripts/validate_messages_dataset.py
+uv run python fine_tuning/scripts/expand_dataset.py --retriever local --dry-run
+uv run python fine_tuning/scripts/validate_messages_dataset.py
 ```
 
 正式强模型造数：
@@ -183,14 +183,14 @@ python fine_tuning/scripts/validate_messages_dataset.py
 ```bash
 cp fine_tuning/configs/config.example.yaml fine_tuning/configs/config.yaml
 # 填写 llm.base_url / llm.api_key / llm.model
-python fine_tuning/scripts/expand_dataset.py --retriever local
-python fine_tuning/scripts/validate_messages_dataset.py
+uv run python fine_tuning/scripts/expand_dataset.py --retriever local
+uv run python fine_tuning/scripts/validate_messages_dataset.py
 ```
 
 Milvus 召回验证：
 
 ```bash
-python fine_tuning/scripts/expand_dataset.py --retriever milvus
+uv run python fine_tuning/scripts/expand_dataset.py --retriever milvus
 ```
 
 注意：Milvus 召回依赖本机 BGE-M3 环境，字段必须使用 `dense_vector`。
@@ -229,4 +229,3 @@ python fine_tuning/scripts/expand_dataset.py --retriever milvus
 | M4 种子样本 | `data/seed/seeds.jsonl` | 产品说明书领域示例 |
 | M5 配置 | `config.example.yaml` | 包含 expand/milvus 字段 |
 | M6 验证 | dry-run + validate | 硬错误 0 |
-

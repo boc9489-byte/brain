@@ -141,7 +141,8 @@ def train(cfg: Dict[str, Any], training: Dict[str, Any], base_override: str | No
         from trl import DataCollatorForCompletionOnlyLM, SFTConfig, SFTTrainer
     except ImportError as exc:
         raise SystemExit(
-            "Missing training dependencies. Install fine_tuning/requirements-train.txt in a GPU environment."
+            "Missing training dependencies. Install them with "
+            "`uv pip install -r fine_tuning/requirements-train.txt` in a GPU environment."
         ) from exc
 
     if base_override:
