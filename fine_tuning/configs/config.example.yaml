@@ -102,3 +102,12 @@ train:
     - "gate_proj"
     - "up_proj"
     - "down_proj"
+
+eval:
+  # Stage 4 Base vs SFT offline evaluation.
+  base_model: "Qwen/Qwen2.5-3B-Instruct"
+  adapter_path: "fine_tuning/outputs/kb-sft"
+  holdout_path: "fine_tuning/data/processed/sft_holdout.jsonl"
+  output_dir: "fine_tuning/data/eval"
+  max_new_tokens: 256
+  benchmark_path: ""

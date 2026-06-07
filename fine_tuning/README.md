@@ -27,7 +27,8 @@ fine_tuning/
 │   ├── validate_dataset.py
 │   ├── convert_to_messages.py
 │   ├── expand_dataset.py
-│   └── validate_messages_dataset.py
+│   ├── validate_messages_dataset.py
+│   └── eval_before_after.py
 ├── src/
 │   ├── train_sft.py
 │   └── merge_lora.py
@@ -53,6 +54,11 @@ fine_tuning/
 | `docs/stage1_test_record.md` | 测试记录，记录 Milvus 导出和后续脚本验收 |
 | `docs/stage1_acceptance_checklist.md` | 阶段一验收清单，用于提交前逐项确认 |
 | `docs/stage2_execution_plan.md` | 阶段二强模型正式造数方案，说明架构、数据流、验收和风险 |
+| `docs/stage2_test_record.md` | 阶段二 dry-run 造数和 messages 校验记录 |
+| `docs/stage3_execution_plan.md` | 阶段三 QLoRA 训练方案，说明训练输入、输出、配置和风险 |
+| `docs/stage3_test_record.md` | 阶段三训练脚本 check-only 测试记录 |
+| `docs/stage4_execution_plan.md` | 阶段四 Base vs SFT 离线评估方案 |
+| `docs/stage4_test_record.md` | 阶段四 stub 评估和指标测试记录 |
 | `docs/daily_progress_2026-06-06.md` | 当天任务进度记录 |
 
 ## 本地运行
@@ -173,6 +179,56 @@ python fine_tuning/src/merge_lora.py --config fine_tuning/configs/config.yaml
 4. 阶段三只训练，不做 Base vs SFT 评估，评估放阶段四。
 ```
 
+## 阶段四评估
+
+阶段四新增 Base vs SFT 离线评估入口：
+
+```text
+sft_holdout.jsonl
+  -> eval_before_after.py
+  -> fine_tuning/data/eval/
+```
+
+本地 stub 验证：
+
+```bash
+python fine_tuning/scripts/eval_before_after.py --stub
+```
+
+只检查输入输出，不加载模型：
+
+```bash
+python fine_tuning/scripts/eval_before_after.py --check-only
+```
+
+真实模型评估：
+
+```bash
+python fine_tuning/scripts/eval_before_after.py \
+  --base Qwen/Qwen2.5-3B-Instruct \
+  --adapter fine_tuning/outputs/kb-sft
+```
+
+可选 LLM judge：
+
+```bash
+python fine_tuning/scripts/eval_before_after.py \
+  --base Qwen/Qwen2.5-3B-Instruct \
+  --adapter fine_tuning/outputs/kb-sft \
+  --judge
+```
+
+阶段四重点看：
+
+```text
+refusal_recall
+false_refusal
+citation_validity
+faithfulness
+completeness
+bad_cases
+```
+
 ## 产物
 
 运行后会生成：
@@ -191,6 +247,10 @@ fine_tuning/data/processed/_expand_stats.json
 fine_tuning/data/processed/_messages_validation_report.md
 fine_tuning/outputs/kb-sft/
 fine_tuning/outputs/kb-sft-merged/
+fine_tuning/data/eval/eval_report.md
+fine_tuning/data/eval/_eval_metrics.json
+fine_tuning/data/eval/bad_cases.jsonl
+fine_tuning/data/eval/predictions.jsonl
 ```
 
 这些数据文件默认不会提交到 Git。
