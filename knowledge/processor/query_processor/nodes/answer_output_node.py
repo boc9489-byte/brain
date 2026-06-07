@@ -1,7 +1,9 @@
+import time
 from typing import Any, Dict, List, Tuple
 
 from knowledge.processor.import_processor.base import BaseNode, T
 from knowledge.utils.client.ai_clients import AIClients
+from knowledge.utils.observability.answer_trace import record_answer_trace
 from knowledge.utils.sse_util import SSEEvent, push_sse_event
 from knowledge.utils.task_util import set_task_result
 from knowledge.prompt.query_prompy import ANSWER_PROMPT
@@ -18,6 +20,7 @@ class AnswerOutPutNode(BaseNode):
 
     def process(self, state: T) -> T:
         """生成或推送最终答案。"""
+        started_at = time.time()
         is_stream = bool(state.get("is_stream"))
         task_id = state.get("task_id", "")
 
@@ -36,6 +39,8 @@ class AnswerOutPutNode(BaseNode):
             else:
                 push_sse_event(task_id=task_id, event=SSEEvent.FINAL, data={"answer": state.get("answer")})
 
+        latency_ms = int((time.time() - started_at) * 1000)
+        record_answer_trace(state, latency_ms=latency_ms, logger=self.logger)
         return state
 
     def _generate_answer(self, prompt: str, task_id: str, state: Dict[str, Any]) -> None:

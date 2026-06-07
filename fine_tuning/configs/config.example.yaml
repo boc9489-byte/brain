@@ -122,3 +122,12 @@ serve:
   temperature: 0.0
   max_tokens: 1024
   timeout_sec: 60
+
+observe:
+  # Stage 6 online observation reference. Runtime tracing is controlled by
+  # ANSWER_TRACE_* environment variables in knowledge/.env.
+  trace_enabled: false
+  trace_path: "fine_tuning/data/online/answer_traces.jsonl"
+  trace_include_text: false
+  trace_include_context: false
+  trace_max_text_chars: 500

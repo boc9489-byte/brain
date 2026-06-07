@@ -477,6 +477,41 @@ uv run python fine_tuning/scripts/check_stage5_serving.py --check-only
 uv run python fine_tuning/scripts/check_stage5_serving.py --health
 ```
 
+### 阶段六：线上观测与 Bad Case 闭环
+
+```text
+1. 默认关闭回答 trace；
+2. 开启后记录 provider、model、延迟、上下文数量、引用、拒答等字段；
+3. 默认只记录 hash 和长度，不记录完整问题/答案；
+4. 从真实 trace 中筛选 bad case，沉淀到 holdout / golden set；
+5. 用阶段四脚本做回归评估，再决定是否重新造数和训练。
+```
+
+阶段六实际接入点：
+
+```text
+AnswerOutPutNode
+  -> record_answer_trace()
+  -> fine_tuning/data/online/answer_traces.jsonl
+  -> bad case mining
+  -> next stage eval / retrain
+```
+
+关键环境变量：
+
+```bash
+ANSWER_TRACE_ENABLED=false
+ANSWER_TRACE_PATH=fine_tuning/data/online/answer_traces.jsonl
+ANSWER_TRACE_INCLUDE_TEXT=false
+ANSWER_TRACE_INCLUDE_CONTEXT=false
+```
+
+检查命令：
+
+```bash
+uv run python fine_tuning/scripts/check_stage6_observability.py --check-only
+```
+
 ## 15. 风险与应对
 
 | 风险 | 影响 | 应对 |

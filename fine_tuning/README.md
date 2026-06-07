@@ -29,7 +29,8 @@ fine_tuning/
 │   ├── expand_dataset.py
 │   ├── validate_messages_dataset.py
 │   ├── eval_before_after.py
-│   └── check_stage5_serving.py
+│   ├── check_stage5_serving.py
+│   └── check_stage6_observability.py
 ├── src/
 │   ├── train_sft.py
 │   └── merge_lora.py
@@ -62,6 +63,8 @@ fine_tuning/
 | `docs/stage4_test_record.md` | 阶段四 stub 评估和指标测试记录 |
 | `docs/stage5_execution_plan.md` | 阶段五 vLLM LoRA 接回业务方案 |
 | `docs/stage5_test_record.md` | 阶段五配置开关和接入检查记录 |
+| `docs/stage6_execution_plan.md` | 阶段六线上观测与 Bad Case 闭环方案 |
+| `docs/stage6_test_record.md` | 阶段六 trace 脱敏、写入和检查记录 |
 | `docs/daily_progress_2026-06-06.md` | 当天任务进度记录 |
 
 ## 本地运行
@@ -294,6 +297,41 @@ uv run python fine_tuning/scripts/check_stage5_serving.py --health
 
 阶段五只应在阶段四离线评估通过后打开 `ANSWER_MODEL_PROVIDER=sft`。
 
+## 阶段六观测
+
+阶段六新增默认关闭的回答 trace：
+
+```text
+AnswerOutPutNode
+  -> record_answer_trace()
+  -> fine_tuning/data/online/answer_traces.jsonl
+  -> bad case / golden set / next eval
+```
+
+默认关闭：
+
+```bash
+ANSWER_TRACE_ENABLED=false
+ANSWER_TRACE_PATH=fine_tuning/data/online/answer_traces.jsonl
+ANSWER_TRACE_INCLUDE_TEXT=false
+```
+
+本地检查：
+
+```bash
+uv run python fine_tuning/scripts/check_stage6_observability.py --check-only
+```
+
+写入一条 sample：
+
+```bash
+ANSWER_TRACE_ENABLED=true \
+ANSWER_TRACE_PATH=/private/tmp/stage6_answer_traces.jsonl \
+uv run python fine_tuning/scripts/check_stage6_observability.py --write-sample
+```
+
+默认 trace 只记录 hash、长度、provider、model、延迟、引用和拒答等字段，不记录完整问题和答案。
+
 ## 产物
 
 运行后会生成：
@@ -316,6 +354,7 @@ fine_tuning/data/eval/eval_report.md
 fine_tuning/data/eval/_eval_metrics.json
 fine_tuning/data/eval/bad_cases.jsonl
 fine_tuning/data/eval/predictions.jsonl
+fine_tuning/data/online/answer_traces.jsonl
 ```
 
 这些数据文件默认不会提交到 Git。
