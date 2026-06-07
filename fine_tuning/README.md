@@ -28,6 +28,9 @@ fine_tuning/
 │   ├── convert_to_messages.py
 │   ├── expand_dataset.py
 │   └── validate_messages_dataset.py
+├── src/
+│   ├── train_sft.py
+│   └── merge_lora.py
 ├── data/
 │   ├── raw/
 │   ├── seed/
@@ -128,6 +131,48 @@ python fine_tuning/scripts/validate_messages_dataset.py
 3. 正式数据需要强模型生成，并做至少 10% 人工抽检。
 ```
 
+## 阶段三训练
+
+阶段三新增 QLoRA 训练入口：
+
+```text
+sft_train.jsonl
+  -> train_sft.py
+  -> fine_tuning/outputs/kb-sft
+```
+
+本地只做检查，不加载模型：
+
+```bash
+python fine_tuning/src/train_sft.py --check-only
+python fine_tuning/src/merge_lora.py --check-only
+```
+
+GPU 环境训练：
+
+```bash
+conda create -n kb-sft python=3.10
+conda activate kb-sft
+pip install -r fine_tuning/requirements-train.txt
+
+python fine_tuning/src/train_sft.py --config fine_tuning/configs/config.yaml
+```
+
+可选合并 LoRA：
+
+```bash
+python fine_tuning/src/merge_lora.py --config fine_tuning/configs/config.yaml
+```
+
+注意：
+
+```text
+1. 阶段三训练必须使用阶段二正式强模型造数后的 sft_train.jsonl；
+2. local + dry-run 生成的数据仍不能训练；
+3. adapter、checkpoint、merged model 都输出到 fine_tuning/outputs/，不会提交 Git；
+4. 阶段三只训练，不做 Base vs SFT 评估，评估放阶段四。
+```
+
 ## 产物
 
 运行后会生成：
@@ -144,6 +189,8 @@ fine_tuning/data/processed/sft_train.jsonl
 fine_tuning/data/processed/sft_holdout.jsonl
 fine_tuning/data/processed/_expand_stats.json
 fine_tuning/data/processed/_messages_validation_report.md
+fine_tuning/outputs/kb-sft/
+fine_tuning/outputs/kb-sft-merged/
 ```
 
 这些数据文件默认不会提交到 Git。

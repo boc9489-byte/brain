@@ -1,0 +1,12 @@
+# Stage 3 training dependencies.
+# Install these in a separate GPU environment, not in the langchain runtime.
+
+torch>=2.1
+transformers==4.46.*
+trl==0.12.*
+peft==0.13.*
+bitsandbytes==0.44.*
+datasets>=2.18
+accelerate>=0.30
+safetensors>=0.4
+
