@@ -30,7 +30,8 @@ fine_tuning/
 │   ├── validate_messages_dataset.py
 │   ├── eval_before_after.py
 │   ├── check_stage5_serving.py
-│   └── check_stage6_observability.py
+│   ├── check_stage6_observability.py
+│   └── mine_stage7_bad_cases.py
 ├── src/
 │   ├── train_sft.py
 │   └── merge_lora.py
@@ -65,6 +66,8 @@ fine_tuning/
 | `docs/stage5_test_record.md` | 阶段五配置开关和接入检查记录 |
 | `docs/stage6_execution_plan.md` | 阶段六线上观测与 Bad Case 闭环方案 |
 | `docs/stage6_test_record.md` | 阶段六 trace 脱敏、写入和检查记录 |
+| `docs/stage7_execution_plan.md` | 阶段七 Bad Case 挖掘与 Golden Set 候选方案 |
+| `docs/stage7_test_record.md` | 阶段七规则挖掘、候选生成和报告记录 |
 | `docs/daily_progress_2026-06-06.md` | 当天任务进度记录 |
 
 ## 本地运行
@@ -332,6 +335,45 @@ uv run python fine_tuning/scripts/check_stage6_observability.py --write-sample
 
 默认 trace 只记录 hash、长度、provider、model、延迟、引用和拒答等字段，不记录完整问题和答案。
 
+## 阶段七挖掘
+
+阶段七把阶段六 trace 离线挖成 bad case 和 Golden Set 候选：
+
+```text
+answer_traces.jsonl
+  -> mine_stage7_bad_cases.py
+  -> bad_cases.jsonl
+  -> golden_candidates.jsonl
+  -> _stage7_bad_case_report.md
+```
+
+无真实 trace 时用 sample 验证：
+
+```bash
+uv run python fine_tuning/scripts/mine_stage7_bad_cases.py --sample
+```
+
+读取真实线上 trace：
+
+```bash
+uv run python fine_tuning/scripts/mine_stage7_bad_cases.py
+```
+
+主要规则：
+
+```text
+no_context_answered
+missing_citation
+sft_over_refusal_candidate
+high_latency
+long_prompt
+short_answer
+empty_answer
+model_error
+```
+
+`golden_candidates.jsonl` 只是人工复核候选，不能直接进入训练集。
+
 ## 产物
 
 运行后会生成：
@@ -355,6 +397,9 @@ fine_tuning/data/eval/_eval_metrics.json
 fine_tuning/data/eval/bad_cases.jsonl
 fine_tuning/data/eval/predictions.jsonl
 fine_tuning/data/online/answer_traces.jsonl
+fine_tuning/data/online/bad_cases.jsonl
+fine_tuning/data/online/golden_candidates.jsonl
+fine_tuning/data/online/_stage7_bad_case_report.md
 ```
 
 这些数据文件默认不会提交到 Git。

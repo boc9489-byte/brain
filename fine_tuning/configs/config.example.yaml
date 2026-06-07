@@ -131,3 +131,13 @@ observe:
   trace_include_text: false
   trace_include_context: false
   trace_max_text_chars: 500
+
+mine:
+  # Stage 7 bad case mining reference. The script accepts CLI flags with the
+  # same meaning, so production jobs can tune thresholds without changing code.
+  trace_path: "fine_tuning/data/online/answer_traces.jsonl"
+  out_dir: "fine_tuning/data/online"
+  latency_threshold_ms: 8000
+  prompt_threshold_chars: 8000
+  short_answer_chars: 20
+  golden_min_severity: 2

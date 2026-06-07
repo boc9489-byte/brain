@@ -512,6 +512,33 @@ ANSWER_TRACE_INCLUDE_CONTEXT=false
 uv run python fine_tuning/scripts/check_stage6_observability.py --check-only
 ```
 
+### 阶段七：Bad Case 挖掘与 Golden Set 候选
+
+```text
+1. 从 answer_traces.jsonl 离线挖掘 bad case；
+2. 按 no_context_answered、missing_citation、high_latency 等规则分桶；
+3. 输出 bad_cases.jsonl 和 golden_candidates.jsonl；
+4. Golden 候选必须人工补 question / ground_truth / expected_sources；
+5. 通过阶段四回归评估验证修复是否有效。
+```
+
+阶段七实际链路：
+
+```text
+fine_tuning/data/online/answer_traces.jsonl
+  -> mine_stage7_bad_cases.py
+  -> fine_tuning/data/online/bad_cases.jsonl
+  -> fine_tuning/data/online/golden_candidates.jsonl
+  -> fine_tuning/data/online/_stage7_bad_case_report.md
+```
+
+检查命令：
+
+```bash
+uv run python fine_tuning/scripts/mine_stage7_bad_cases.py --sample
+uv run python fine_tuning/tests/test_stage7_bad_case_mining.py
+```
+
 ## 15. 风险与应对
 
 | 风险 | 影响 | 应对 |
