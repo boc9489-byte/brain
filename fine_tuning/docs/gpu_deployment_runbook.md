@@ -1,15 +1,18 @@
-# GPU 上线 Runbook - 掌柜智库 SFT
+# GPU 训练与上线 Runbook - 掌柜智库 SFT
 
 ## 1. 目标
 
-把训练后的 LoRA adapter 通过 vLLM OpenAI-compatible 服务接回业务回答链路，并支持：
+先在租用 GPU 上完成 QLoRA 训练，再把训练后的 LoRA adapter 通过 vLLM OpenAI-compatible 服务接回业务回答链路，并支持：
 
 ```text
-1. base / sft 环境变量切换；
-2. GPU 模型服务健康检查；
-3. 业务服务联调；
-4. 线上 trace 观测；
-5. 快速回滚到 base。
+1. 上传代码、配置和训练数据；
+2. 下载基座模型；
+3. 启动 QLoRA 训练并产出 LoRA adapter；
+4. base / sft 环境变量切换；
+5. GPU 模型服务健康检查；
+6. 业务服务联调；
+7. 线上 trace 观测；
+8. 快速回滚到 base。
 ```
 
 ## 2. 服务器规划
@@ -65,25 +68,175 @@ mkdir -p shopkeeper_brain
 tar -xzf shopkeeper_brain.tar.gz -C shopkeeper_brain
 ```
 
-## 4. GPU 环境准备
+### 3.3 上传训练配置和数据
+
+`fine_tuning/configs/config.yaml`、`fine_tuning/data/` 被 Git 忽略，不会随代码仓库自动同步。正式训练前需要单独上传：
+
+```bash
+ssh user@SERVER "mkdir -p /usr-data/apps/shopkeeper_brain/fine_tuning/configs /usr-data/apps/shopkeeper_brain/fine_tuning/data/processed"
+
+scp fine_tuning/configs/config.yaml \
+  user@SERVER:/usr-data/apps/shopkeeper_brain/fine_tuning/configs/
+
+scp fine_tuning/data/processed/sft_train.jsonl \
+    fine_tuning/data/processed/sft_holdout.jsonl \
+  user@SERVER:/usr-data/apps/shopkeeper_brain/fine_tuning/data/processed/
+```
+
+服务器上确认：
+
+```bash
+cd /usr-data/apps/shopkeeper_brain
+ls -lh fine_tuning/configs/config.yaml
+ls -lh fine_tuning/data/processed/sft_train.jsonl
+ls -lh fine_tuning/data/processed/sft_holdout.jsonl
+```
+
+## 4. GPU 训练环境准备
+
+检查 GPU：
 
 ```bash
 nvidia-smi
+```
+
+创建训练环境：
+
+```bash
+cd /usr-data/apps/shopkeeper_brain
+uv venv --python 3.10 .venv-kb-sft
+source .venv-kb-sft/bin/activate
+uv pip install -r fine_tuning/requirements-train.txt
+```
+
+如果服务器没有 `uv`：
+
+```bash
+pip install uv
+```
+
+确认 PyTorch 能看到 GPU：
+
+```bash
+python -c "import torch; print(torch.__version__); print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0))"
+```
+
+预期 `torch.cuda.is_available()` 为 `True`。
+
+## 5. 下载基座模型
+
+模型目录建议：
+
+```text
+/usr-data/models/Qwen2.5-3B-Instruct
+```
+
+如果 `train.base_model` 写成 `Qwen/Qwen2.5-3B-Instruct`，训练时会自动远程下载；租用 GPU 上更稳的做法是提前下载到本地目录。
+
+HuggingFace 下载：
+
+```bash
+mkdir -p /usr-data/models
+pip install -U huggingface_hub
+
+huggingface-cli download Qwen/Qwen2.5-3B-Instruct \
+  --local-dir /usr-data/models/Qwen2.5-3B-Instruct \
+  --local-dir-use-symlinks False
+```
+
+ModelScope 下载：
+
+```bash
+pip install -U modelscope
+
+modelscope download \
+  --model Qwen/Qwen2.5-3B-Instruct \
+  --local_dir /usr-data/models/Qwen2.5-3B-Instruct
+```
+
+检查模型文件：
+
+```bash
+ls -lh /usr-data/models/Qwen2.5-3B-Instruct
+```
+
+然后修改 `fine_tuning/configs/config.yaml`：
+
+```yaml
+train:
+  base_model: "/usr-data/models/Qwen2.5-3B-Instruct"
+  output_dir: "fine_tuning/outputs/kb-sft"
+```
+
+## 6. 启动 QLoRA 训练
+
+训练前检查：
+
+```bash
+cd /usr-data/apps/shopkeeper_brain
+source .venv-kb-sft/bin/activate
+
+uv run --active python fine_tuning/src/train_sft.py \
+  --config fine_tuning/configs/config.yaml \
+  --check-only
+```
+
+通过后开始训练：
+
+```bash
+uv run --active python fine_tuning/src/train_sft.py \
+  --config fine_tuning/configs/config.yaml
+```
+
+训练输出：
+
+```text
+fine_tuning/outputs/kb-sft
+```
+
+检查 adapter：
+
+```bash
+ls -lh fine_tuning/outputs/kb-sft
+```
+
+## 7. 训练后离线评估
+
+```bash
+uv run --active python fine_tuning/scripts/eval_before_after.py \
+  --base /usr-data/models/Qwen2.5-3B-Instruct \
+  --adapter fine_tuning/outputs/kb-sft
+```
+
+查看：
+
+```text
+fine_tuning/data/eval/eval_report.md
+fine_tuning/data/eval/_eval_metrics.json
+fine_tuning/data/eval/bad_cases.jsonl
+```
+
+只有阶段四真实评估确认 SFT 有收益后，再进入 vLLM 接业务。
+
+## 8. vLLM 环境准备
+
+建议 vLLM 服务使用独立环境：
+
+```bash
 cd /usr-data/apps/shopkeeper_brain
 uv venv --python 3.10 .venv-vllm
 source .venv-vllm/bin/activate
 uv pip install vllm
 ```
 
-模型目录建议：
+adapter 目录可以直接使用训练输出，也可以复制到统一目录：
 
-```text
-/usr-data/models/Qwen2.5-3B-Instruct
-/usr-data/adapters/kb-sft
-/usr-data/logs/vllm
+```bash
+mkdir -p /usr-data/adapters
+cp -r fine_tuning/outputs/kb-sft /usr-data/adapters/kb-sft
 ```
 
-## 5. 启动 vLLM
+## 9. 启动 vLLM
 
 Base + LoRA：
 
@@ -109,7 +262,7 @@ curl http://127.0.0.1:8000/v1/models
 能看到 Qwen/Qwen2.5-3B-Instruct 和 kb-sft。
 ```
 
-## 6. 业务环境准备
+## 10. 业务环境准备
 
 ```bash
 cd /usr-data/apps/shopkeeper_brain
@@ -135,7 +288,7 @@ ANSWER_TRACE_INCLUDE_TEXT=false
 ANSWER_TRACE_INCLUDE_CONTEXT=false
 ```
 
-## 7. 上线前检查
+## 11. 上线前检查
 
 ```bash
 uv run python fine_tuning/scripts/check_stage5_serving.py --check-only
@@ -157,7 +310,7 @@ uv run python fine_tuning/tests/test_stage6_answer_trace.py
 uv run python fine_tuning/tests/test_stage7_bad_case_mining.py
 ```
 
-## 8. 启动业务服务
+## 12. 启动业务服务
 
 ```bash
 uv run python -c "from knowledge.api.import_router import create_app; import uvicorn; uvicorn.run(create_app(), host='0.0.0.0', port=8000)"
@@ -175,7 +328,7 @@ curl http://127.0.0.1:8000/hello
 http://SERVER_IP:8000/front/import.html
 ```
 
-## 9. SFT 灰度切换
+## 13. SFT 灰度切换
 
 第一步只上 base：
 
@@ -196,7 +349,7 @@ uv run python fine_tuning/scripts/check_stage5_serving.py --check-only
 uv run python fine_tuning/scripts/check_stage5_serving.py --health
 ```
 
-## 10. 线上观测
+## 14. 线上观测
 
 查看回答 trace：
 
@@ -218,7 +371,7 @@ fine_tuning/data/online/golden_candidates.jsonl
 fine_tuning/data/online/_stage7_bad_case_report.md
 ```
 
-## 11. 回滚
+## 15. 回滚
 
 如果 SFT 出现误拒、延迟升高、引用异常或 vLLM 不稳定：
 
@@ -237,10 +390,14 @@ vLLM 日志
 
 回到阶段四重新做 Base vs SFT 评估。
 
-## 12. 常见问题
+## 16. 常见问题
 
 | 现象 | 可能原因 | 处理 |
 |---|---|---|
+| `train_sft.py` 开始后卡在下载 | 没有提前下载基座模型 | 先下载到 `/usr-data/models`，再把 `train.base_model` 改成本地路径 |
+| `train-check` rows 为 0 | 训练数据没有上传或路径不对 | 检查 `fine_tuning/data/processed/sft_train.jsonl` |
+| CUDA 不可用 | 镜像或驱动不匹配 | 先确认 `nvidia-smi` 和 `torch.cuda.is_available()` |
+| 训练 OOM | 模型或上下文过大 | 降低 `max_seq_len` 到 1024，保持 `per_device_batch=1` |
 | `/v1/models` 看不到 `kb-sft` | vLLM 没有启用 LoRA | 检查 `--enable-lora` 和 `--lora-modules` |
 | SFT 调用失败 | `ANSWER_SFT_MODEL` 与 LoRA alias 不一致 | 统一设置为 `kb-sft` |
 | 业务回答仍走旧模型 | `ANSWER_MODEL_PROVIDER` 未切换或服务未重启 | 修改 `.env` 后重启业务 |

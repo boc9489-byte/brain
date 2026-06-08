@@ -50,6 +50,7 @@ fine_tuning/
 
 | 文档 | 作用 |
 |---|---|
+| `docs/zero_to_gpu_finetune.md` | 0 基础从本地造数到 GPU 微调的完整操作手册 |
 | `docs/enterprise_engineering_solution.md` | 企业工程总方案，串联定位、架构、数据、测试、验收和路线图 |
 | `docs/gpu_deployment_runbook.md` | GPU / vLLM / LoRA 上线操作手册 |
 | `docs/release_acceptance_checklist.md` | 发布前、GPU、业务、线上验收清单 |
@@ -182,6 +183,37 @@ source .venv-kb-sft/bin/activate
 uv pip install -r fine_tuning/requirements-train.txt
 
 uv run --active python fine_tuning/src/train_sft.py --config fine_tuning/configs/config.yaml
+```
+
+训练前还必须准备基座模型。推荐提前下载到 GPU 本地目录：
+
+```bash
+mkdir -p /usr-data/models
+
+huggingface-cli download Qwen/Qwen2.5-3B-Instruct \
+  --local-dir /usr-data/models/Qwen2.5-3B-Instruct \
+  --local-dir-use-symlinks False
+```
+
+如果 HuggingFace 网络不稳定，可以用 ModelScope：
+
+```bash
+modelscope download \
+  --model Qwen/Qwen2.5-3B-Instruct \
+  --local_dir /usr-data/models/Qwen2.5-3B-Instruct
+```
+
+然后把 `fine_tuning/configs/config.yaml` 中的 `train.base_model` 改为本地路径：
+
+```yaml
+train:
+  base_model: "/usr-data/models/Qwen2.5-3B-Instruct"
+```
+
+0 基础完整流程见：
+
+```text
+fine_tuning/docs/zero_to_gpu_finetune.md
 ```
 
 可选合并 LoRA：

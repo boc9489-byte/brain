@@ -1,11 +1,10 @@
 import threading
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 from dotenv import load_dotenv
 
 from openai import OpenAI
 from langchain_openai import ChatOpenAI
-from pymilvus.model.hybrid import BGEM3EmbeddingFunction
 
 from knowledge.utils.client.answer_model_config import AnswerModelSettings
 from knowledge.utils.client.base import BaseClientManager, logger
@@ -26,7 +25,7 @@ class AIClients(BaseClientManager):
     _answer_llm_clients = {}
     _answer_llm_lock = threading.Lock()
 
-    _bge_m3_client: Optional[BGEM3EmbeddingFunction] = None
+    _bge_m3_client: Optional[Any] = None
     _bge_m3_lock = threading.Lock()
 
     # ── OpenAI / VLM ──
@@ -38,6 +37,15 @@ class AIClients(BaseClientManager):
     @classmethod
     def _create_bge_m3_openai(cls) :
         try:
+            try:
+                from FlagEmbedding import BGEM3FlagModel  # noqa: F401
+                from pymilvus.model.hybrid import BGEM3EmbeddingFunction
+            except ImportError as exc:
+                raise ImportError(
+                    "缺少 BGE-M3 依赖。请在项目 uv 环境中执行："
+                    "uv pip install -r knowledge/requirements.txt"
+                ) from exc
+
             # bge_m3_ef = BGEM3EmbeddingFunction(
             #     model_name="/Users/bob/Documents/bge-m3", # Specify the model name
             #     device='mps', # Specify the device to use, e.g., 'cpu' or 'cuda:0'

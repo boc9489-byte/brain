@@ -41,12 +41,14 @@ expand_dataset.py
 
 ```text
 1. 不在 Mac CPU 环境真实训练；
-2. 不下载模型；
+2. 训练脚本不负责预下载模型；
 3. 不提交模型权重、adapter、checkpoint；
 4. 不做 Base vs SFT 评估；
 5. 不接 vLLM；
 6. 不修改 knowledge 查询链路。
 ```
+
+说明：阶段三训练必须能读取基座模型。`train.base_model` 可以是 HuggingFace 模型名，也可以是 GPU 本地路径；为了降低租用 GPU 上的网络失败风险，推荐提前下载到 `/usr-data/models/`，再把 `train.base_model` 改成本地路径。
 
 ## 3. 总体架构
 
@@ -165,6 +167,56 @@ Linux + NVIDIA GPU
 显存 3B：8-12GB 起步
 显存 7B：16-24GB 起步
 CUDA / PyTorch / bitsandbytes 版本匹配
+```
+
+### 8.1 基座模型准备
+
+训练脚本执行到 `AutoTokenizer.from_pretrained` 和 `AutoModelForCausalLM.from_pretrained` 时会读取 `train.base_model`。
+
+如果配置为模型名：
+
+```yaml
+train:
+  base_model: "Qwen/Qwen2.5-3B-Instruct"
+```
+
+Transformers 会尝试从远程仓库下载。租用 GPU 环境容易遇到网络不稳定，推荐提前下载：
+
+```bash
+mkdir -p /usr-data/models
+
+huggingface-cli download Qwen/Qwen2.5-3B-Instruct \
+  --local-dir /usr-data/models/Qwen2.5-3B-Instruct \
+  --local-dir-use-symlinks False
+```
+
+或使用 ModelScope：
+
+```bash
+modelscope download \
+  --model Qwen/Qwen2.5-3B-Instruct \
+  --local_dir /usr-data/models/Qwen2.5-3B-Instruct
+```
+
+然后把 `fine_tuning/configs/config.yaml` 改为：
+
+```yaml
+train:
+  base_model: "/usr-data/models/Qwen2.5-3B-Instruct"
+```
+
+下载后检查：
+
+```bash
+ls -lh /usr-data/models/Qwen2.5-3B-Instruct
+```
+
+预期至少包含：
+
+```text
+config.json
+tokenizer.json 或 tokenizer.model
+model-*.safetensors
 ```
 
 ## 9. 验收命令

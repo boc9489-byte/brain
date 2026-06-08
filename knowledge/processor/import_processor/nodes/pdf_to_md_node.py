@@ -1,6 +1,7 @@
 
 import json
 import subprocess
+import sys
 import time
 from typing import Tuple
 from pathlib import Path
@@ -34,9 +35,19 @@ class Pdf2MdNode(BaseNode):
 
     def _execute_mineru_parse(self, import_file_path_obj: Path, file_dir_obj: Path) -> int:
         self.log_step("step2","执行子进程 cmd : mineru -p input_path -o output_path --source=local ")
+
+        mineru_bin = Path(sys.executable).with_name("mineru")
+        if not mineru_bin.exists():
+            raise PdfConversionError(
+                message=(
+                    f"未找到 mineru 命令：{mineru_bin}。"
+                    "请确认已在 uv 环境中安装 MinerU，并使用 uv run 启动项目。"
+                ),
+                node_name=self.name,
+            )
         
         cmd =[
-            "mineru",
+            str(mineru_bin),
             "-p",
             str(import_file_path_obj),
             "-o",

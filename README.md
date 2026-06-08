@@ -46,6 +46,7 @@ shopkeeper_brain/
 | 文档 | 作用 |
 |---|---|
 | `fine_tuning/README.md` | fine_tuning 模块总入口 |
+| `fine_tuning/docs/zero_to_gpu_finetune.md` | 0 基础从本地造数到 GPU 微调的完整操作手册 |
 | `fine_tuning/docs/enterprise_engineering_solution.md` | 微调专项企业工程总方案 |
 | `fine_tuning/docs/gpu_deployment_runbook.md` | GPU / vLLM / LoRA 上线操作手册 |
 | `fine_tuning/docs/release_acceptance_checklist.md` | 发布前、GPU、业务、线上验收清单 |
@@ -121,7 +122,32 @@ dry-run / stub 只验证工程通路，不能作为正式训练数据。
 正式训练前必须完成阶段二强模型造数、人工抽检、阶段三训练和阶段四评估。
 ```
 
-## 6. GPU 上线摘要
+## 6. 0 基础 GPU 微调入口
+
+如果你是第一次租 GPU 做微调，优先按下面这份文档执行：
+
+```text
+fine_tuning/docs/zero_to_gpu_finetune.md
+```
+
+它覆盖：
+
+```text
+1. 本地正式造数；
+2. 上传代码、config.yaml、sft_train.jsonl、sft_holdout.jsonl；
+3. 在 GPU 上下载基座模型；
+4. 搭建 QLoRA 训练环境；
+5. 启动 train_sft.py；
+6. 生成 LoRA adapter 并做离线评估。
+```
+
+注意：项目代码不会自动包含模型权重。训练前必须准备基座模型，例如：
+
+```text
+/usr-data/models/Qwen2.5-3B-Instruct
+```
+
+## 7. GPU 上线摘要
 
 模型服务建议与业务服务分离：
 
@@ -171,7 +197,7 @@ fine_tuning/docs/gpu_deployment_runbook.md
 fine_tuning/docs/release_acceptance_checklist.md
 ```
 
-## 7. Git 安全
+## 8. Git 安全
 
 可以提交：
 
