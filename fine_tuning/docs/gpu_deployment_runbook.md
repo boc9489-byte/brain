@@ -115,6 +115,15 @@ uv pip install -r fine_tuning/requirements-train.txt
 pip install uv
 ```
 
+如果服务器系统 Python 是 3.8，不要直接用系统 Python 训练。优先选择带 Python 3.10 + CUDA + PyTorch 的 GPU 镜像；或者用 conda 创建 Python 3.10 环境后再安装 uv：
+
+```bash
+conda create -n kb-sft python=3.10 -y
+conda activate kb-sft
+pip install uv
+uv pip install -r fine_tuning/requirements-train.txt
+```
+
 确认 PyTorch 能看到 GPU：
 
 ```bash
@@ -137,9 +146,9 @@ HuggingFace 下载：
 
 ```bash
 mkdir -p /usr-data/models
-pip install -U huggingface_hub
+uv pip install -U huggingface_hub
 
-huggingface-cli download Qwen/Qwen2.5-3B-Instruct \
+uv run huggingface-cli download Qwen/Qwen2.5-3B-Instruct \
   --local-dir /usr-data/models/Qwen2.5-3B-Instruct \
   --local-dir-use-symlinks False
 ```
@@ -147,9 +156,9 @@ huggingface-cli download Qwen/Qwen2.5-3B-Instruct \
 ModelScope 下载：
 
 ```bash
-pip install -U modelscope
+uv pip install -U modelscope
 
-modelscope download \
+uv run modelscope download \
   --model Qwen/Qwen2.5-3B-Instruct \
   --local_dir /usr-data/models/Qwen2.5-3B-Instruct
 ```

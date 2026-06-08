@@ -166,7 +166,30 @@ ls -lh fine_tuning/data/processed/sft_train.jsonl
 ls -lh fine_tuning/data/processed/sft_holdout.jsonl
 ```
 
-## 6. 下载基座模型
+## 6. 准备 Python 3.10 和下载工具
+
+训练环境不要直接使用服务器系统 Python 3.8。先创建 Python 3.10 的 uv 环境，后续下载工具和训练依赖都装到这个环境里：
+
+```bash
+cd /usr-data/apps/shopkeeper_brain
+
+uv venv --python 3.10 .venv-kb-sft
+source .venv-kb-sft/bin/activate
+uv pip install -U huggingface_hub modelscope
+```
+
+如果服务器没有 Python 3.10，优先用 GPU 平台自带的 conda 或镜像创建：
+
+```bash
+conda create -n kb-sft python=3.10 -y
+conda activate kb-sft
+pip install uv
+uv pip install -U huggingface_hub modelscope
+```
+
+只有在“安装 uv 本身”或“进入 conda 环境后安装 uv”这类 bootstrap 场景，才使用 `pip install uv`。项目依赖和下载工具统一用 `uv pip`。
+
+## 7. 下载基座模型
 
 训练脚本里的 `train.base_model` 可以写模型名，也可以写本地路径。
 
@@ -188,9 +211,7 @@ mkdir -p /usr-data/models
 方式一：HuggingFace 下载：
 
 ```bash
-pip install -U huggingface_hub
-
-huggingface-cli download Qwen/Qwen2.5-3B-Instruct \
+uv run huggingface-cli download Qwen/Qwen2.5-3B-Instruct \
   --local-dir /usr-data/models/Qwen2.5-3B-Instruct \
   --local-dir-use-symlinks False
 ```
@@ -198,9 +219,8 @@ huggingface-cli download Qwen/Qwen2.5-3B-Instruct \
 方式二：ModelScope 下载：
 
 ```bash
-pip install -U modelscope
-
-modelscope download \
+uv run --python 3.10 --with modelscope \
+  modelscope download \
   --model Qwen/Qwen2.5-3B-Instruct \
   --local_dir /usr-data/models/Qwen2.5-3B-Instruct
 ```
@@ -228,14 +248,13 @@ train:
   output_dir: "fine_tuning/outputs/kb-sft"
 ```
 
-## 7. 搭建 GPU 训练环境
+## 8. 安装 GPU 训练依赖
 
 GPU 上执行：
 
 ```bash
 cd /usr-data/apps/shopkeeper_brain
 
-uv venv --python 3.10 .venv-kb-sft
 source .venv-kb-sft/bin/activate
 uv pip install -r fine_tuning/requirements-train.txt
 ```
@@ -258,7 +277,7 @@ python -c "import torch; print(torch.__version__); print(torch.cuda.is_available
 torch.cuda.is_available() 输出 True。
 ```
 
-## 8. 训练前检查
+## 9. 训练前检查
 
 ```bash
 cd /usr-data/apps/shopkeeper_brain
@@ -278,7 +297,7 @@ uv run --active python fine_tuning/src/train_sft.py \
 
 如果 rows 为 0 或检查失败，回到第 5 步检查数据上传。
 
-## 9. 开始 QLoRA 微调
+## 10. 开始 QLoRA 微调
 
 ```bash
 uv run --active python fine_tuning/src/train_sft.py \
@@ -302,10 +321,11 @@ tokenizer files
 
 这些文件不要提交 Git。
 
-## 10. 常见训练问题
+## 11. 常见训练问题
 
 | 现象 | 原因 | 处理 |
 |---|---|---|
+| 服务器只有 Python 3.8 | 系统 Python 太旧，不适合作为训练环境 | 用 conda 或 GPU 镜像创建 Python 3.10，再安装 uv |
 | 下载模型很慢或失败 | GPU 平台网络不稳定 | 先用 HuggingFace / ModelScope 下载到 `/usr-data/models` |
 | CUDA 不可用 | 镜像不含 GPU PyTorch 或驱动异常 | 换 CUDA/PyTorch 镜像，先确认 `nvidia-smi` |
 | `bitsandbytes` 报错 | CUDA 与 bitsandbytes 不匹配 | 换官方 PyTorch CUDA 镜像或重装 requirements |
@@ -313,7 +333,7 @@ tokenizer files
 | loss mask 报错 | assistant 模板与模型 chat template 不匹配 | 检查 `assistant_template` 是否适配当前模型 |
 | 训练数据像模板 | 使用了 dry-run 数据 | 重新执行正式强模型造数 |
 
-## 11. 训练后评估
+## 12. 训练后评估
 
 ```bash
 uv run --active python fine_tuning/scripts/eval_before_after.py \
@@ -337,7 +357,7 @@ bad_cases.jsonl
 
 只有阶段四评估确认 SFT 有收益后，才进入 vLLM LoRA 接回业务。
 
-## 12. 最小成功标准
+## 13. 最小成功标准
 
 第一次跑通时，只要满足：
 

@@ -30,8 +30,8 @@ milvus:
 
 llm:
   # OpenAI-compatible data generator. Leave empty for offline stub mode.
-  base_url: ""
-  api_key: ""
+  base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+  api_key: "sk-72c8c186db364a148f7634cb31878002"
   model: "qwen-plus"
   temperature: 0.7
   max_tokens: 512

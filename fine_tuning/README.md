@@ -189,8 +189,9 @@ uv run --active python fine_tuning/src/train_sft.py --config fine_tuning/configs
 
 ```bash
 mkdir -p /usr-data/models
+uv pip install -U huggingface_hub
 
-huggingface-cli download Qwen/Qwen2.5-3B-Instruct \
+uv run huggingface-cli download Qwen/Qwen2.5-3B-Instruct \
   --local-dir /usr-data/models/Qwen2.5-3B-Instruct \
   --local-dir-use-symlinks False
 ```
@@ -198,7 +199,9 @@ huggingface-cli download Qwen/Qwen2.5-3B-Instruct \
 如果 HuggingFace 网络不稳定，可以用 ModelScope：
 
 ```bash
-modelscope download \
+uv pip install -U modelscope
+
+uv run modelscope download \
   --model Qwen/Qwen2.5-3B-Instruct \
   --local_dir /usr-data/models/Qwen2.5-3B-Instruct
 ```

@@ -56,11 +56,29 @@ def test_stub_metrics_have_expected_direction():
     assert sft_metrics["citation_validity"] == 1.0
 
 
+def test_refusal_detector_matches_missing_information_wording():
+    row = E.evaluate_model(
+        [
+            make_sample(
+                "refuse",
+                "【检索资料】\n[1] RS-12 使用 9V 电池。\n\n【问题】\nRS-12 保修多久？",
+                "资料中没有提供保修期限和售后政策的信息。",
+                subtype="weak_recall",
+            )
+        ],
+        E.OracleSftStub(),
+        "sft",
+    )[0]
+
+    assert row["did_refuse"] is True
+    assert row["bad_case"] is None
+
+
 def main() -> None:
     test_stub_metrics_have_expected_direction()
+    test_refusal_detector_matches_missing_information_wording()
     print("[ok] stage4 eval metrics direction is correct")
 
 
 if __name__ == "__main__":
     main()
-
