@@ -1,5 +1,11 @@
 minio                    # 对象存储客户端
+fastapi                  # 导入服务 HTTP API
+uvicorn                  # FastAPI 本地/服务器启动器
+python-multipart         # FastAPI UploadFile 文件上传解析
+python-dotenv            # 加载 knowledge/.env 环境变量
+openai                   # VLM / 图片理解和 OpenAI-compatible 客户端
 langchain-openai         # LangChain OpenAI 集成
+langchain-text-splitters # Markdown / 文档 chunk 切分
 langgraph                # 工作流编排框架
 grandalf                 # 图布局算法（LangGraph 依赖）
 pymilvus[model]          # Milvus 模型支持

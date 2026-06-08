@@ -1,5 +1,4 @@
 import os
-from click import clear
 import uvicorn
 from fastapi import Depends, FastAPI, File, UploadFile, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
