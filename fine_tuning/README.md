@@ -70,6 +70,7 @@ fine_tuning/
 | `docs/stage6_test_record.md` | 阶段六 trace 脱敏、写入和检查记录 |
 | `docs/stage7_execution_plan.md` | 阶段七 Bad Case 挖掘与 Golden Set 候选方案 |
 | `docs/stage7_test_record.md` | 阶段七规则挖掘、候选生成和报告记录 |
+| `docs/stage8_execution_plan.md` | 阶段八 Query Intent Analyzer 与检索路由优化方案 |
 | `docs/daily_progress_2026-06-06.md` | 当天任务进度记录 |
 
 ## 本地运行
@@ -394,6 +395,25 @@ model_error
 ```
 
 `golden_candidates.jsonl` 只是人工复核候选，不能直接进入训练集。
+
+## 阶段八规划
+
+阶段八把当前轻量 `intent_type` 升级为完整 Query Analyzer：
+
+```text
+original_query + history
+  -> LLM candidate item / intent_type / rewritten_query
+  -> Milvus item_name_collection alignment
+  -> confidence threshold / score gap filtering
+  -> clarification or retrieval routing
+  -> hybrid / HyDE / web / image-aware retrieval
+```
+
+规划文档见：
+
+```text
+fine_tuning/docs/stage8_execution_plan.md
+```
 
 ## 产物
 

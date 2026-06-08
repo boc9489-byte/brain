@@ -557,6 +557,40 @@ uv run python fine_tuning/scripts/mine_stage7_bad_cases.py --sample
 uv run python fine_tuning/tests/test_stage7_bad_case_mining.py
 ```
 
+### 阶段八：Query Intent Analyzer 与检索路由优化
+
+```text
+1. 将当前轻量 intent_type 升级为完整 Query Analyzer；
+2. 使用 LLM 从 original_query + history 中提取候选商品名、intent_type 和 rewritten_query；
+3. 使用 Milvus 商品名集合对齐真实商品名；
+4. 使用 high / mid / score_gap 阈值确认商品或触发澄清；
+5. 将 item_names、candidate_items、need_clarification、retrieval_strategy 写入 QueryGraphState；
+6. 按 operation、parameter、troubleshooting、image_request 等意图调整检索策略；
+7. 扩展 trace 和 bad case 挖掘字段，按意图和商品确认结果复盘。
+```
+
+阶段八目标链路：
+
+```text
+original_query + history
+  -> QueryIntentAnalyzer
+       -> LLM candidate extraction
+       -> Milvus item_name alignment
+       -> confidence filtering
+       -> clarification routing
+       -> retrieval strategy planning
+  -> multi_search / clarification answer
+  -> rrf_node
+  -> reranker_node
+  -> answer_output_node
+```
+
+规划文档：
+
+```text
+fine_tuning/docs/stage8_execution_plan.md
+```
+
 ## 15. 风险与应对
 
 | 风险 | 影响 | 应对 |
