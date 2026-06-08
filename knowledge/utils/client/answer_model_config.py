@@ -60,6 +60,7 @@ class AnswerModelSettings:
 
     @classmethod
     def from_env(cls) -> "AnswerModelSettings":
+        # 这里允许 ANSWER_* 覆盖通用 OPENAI_*，避免微调回答服务影响导入链路。
         provider = _first_env("ANSWER_MODEL_PROVIDER", default="base").lower()
         return cls(
             provider=provider,
@@ -82,6 +83,7 @@ class AnswerModelSettings:
     def issues(self) -> List[str]:
         """返回配置问题列表，供检查脚本和客户端初始化复用。"""
         problems: List[str] = []
+        # 检查脚本会直接展示这些问题，回答客户端初始化也会用它阻断明显错误配置。
         if self.provider not in {"base", "sft"}:
             problems.append("ANSWER_MODEL_PROVIDER must be base or sft")
         if not self.base_url:
@@ -98,6 +100,7 @@ class AnswerModelSettings:
 
     def cache_key(self, response_format: bool) -> Tuple[str, str, str, bool]:
         """客户端缓存键，避免 base/sft 切换时复用错客户端。"""
+        # provider 和 model_name 都入缓存键；同一个 /v1 服务下 base 与 LoRA alias 也必须隔离。
         return (self.provider, self.base_url, self.model_name, response_format)
 
     def safe_dict(self) -> Dict[str, object]:

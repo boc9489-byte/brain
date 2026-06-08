@@ -25,6 +25,7 @@ try:
 except ImportError:
     load_dotenv = None
 
+
 def load_project_env() -> None:
     """加载 knowledge/.env；没有 python-dotenv 时使用轻量解析兜底。"""
     env_path = REPO_ROOT / "knowledge" / ".env"
@@ -34,6 +35,7 @@ def load_project_env() -> None:
         load_dotenv(env_path)
         return
 
+    # GPU 服务器可能只装了最小依赖，这里保留 dotenv 的轻量兜底解析。
     for line in env_path.read_text(encoding="utf-8").splitlines():
         stripped = line.strip()
         if not stripped or stripped.startswith("#") or "=" not in stripped:
@@ -92,6 +94,7 @@ def main() -> None:
             print(f"[stage5][error] {issue}")
         raise SystemExit(1)
 
+    # 默认不访问网络，避免本地只想检查配置时被未启动的 vLLM 阻断。
     if args.health:
         issues.extend(check_models(settings))
         if issues:

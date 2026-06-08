@@ -15,6 +15,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_TRACE_PATH = REPO_ROOT / "fine_tuning" / "data" / "online" / "answer_traces.jsonl"
 DEFAULT_OUT_DIR = REPO_ROOT / "fine_tuning" / "data" / "online"
 
+# 每类 bad case 都绑定一个处理建议，报告可以直接变成排障清单。
 SUGGESTIONS = {
     "empty_answer": "检查模型服务异常、超时和 AnswerOutPutNode 兜底逻辑。",
     "model_error": "优先查看模型服务日志和请求超时配置。",
@@ -26,6 +27,7 @@ SUGGESTIONS = {
     "short_answer": "人工复核回答是否不完整，必要时补 format / completeness 样本。",
 }
 
+# 严重度 3 优先影响正确性或可用性；严重度 1 多为优化项或人工复核线索。
 SEVERITY = {
     "empty_answer": 3,
     "model_error": 3,
@@ -160,6 +162,7 @@ def classify_trace(
     provider = str(trace.get("provider") or "").lower()
     error = str(trace.get("error") or "").strip()
 
+    # 规则顺序从硬故障到质量问题排列，方便报告里先看到最高风险原因。
     if not has_answer or answer_chars <= 0:
         bad_types.append("empty_answer")
     if error:
@@ -242,11 +245,13 @@ def build_golden_candidates(bad_cases: Sequence[Dict[str, Any]], min_severity: i
         if not query_hash or int(bad_case.get("severity") or 0) < min_severity:
             continue
         old = dedup.get(query_hash)
+        # 同一问题只保留最新一次异常，避免线上重复提问把 Golden 候选刷爆。
         if old is None or str(bad_case.get("ts", "")) >= str(old.get("ts", "")):
             dedup[query_hash] = bad_case
 
     candidates: List[Dict[str, Any]] = []
     for idx, bad_case in enumerate(sorted(dedup.values(), key=lambda row: row["trace_id"]), 1):
+        # 候选只进入人工标注池，不会自动回灌训练集，避免把坏答案直接学进去。
         candidate = {
             "candidate_id": f"golden-candidate-{idx:06d}",
             "source_trace_id": bad_case["trace_id"],

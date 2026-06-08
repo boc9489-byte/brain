@@ -22,6 +22,7 @@ def load_project_env() -> None:
     try:
         from dotenv import load_dotenv
     except ImportError:
+        # 观测检查脚本可在精简 GPU 环境运行，所以不强依赖 python-dotenv。
         for line in env_path.read_text(encoding="utf-8").splitlines():
             stripped = line.strip()
             if not stripped or stripped.startswith("#") or "=" not in stripped:
@@ -74,6 +75,7 @@ def main() -> None:
     print("[stage6] sample trace:")
     print(json.dumps(trace, ensure_ascii=False, indent=2))
 
+    # 默认只构造和打印 sample；只有显式 --write-sample 才会写 JSONL 文件。
     if args.write_sample:
         if not settings.enabled:
             raise SystemExit("[stage6] ANSWER_TRACE_ENABLED is false; set it to true before writing sample.")
