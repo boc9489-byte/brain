@@ -83,6 +83,7 @@ def test_trace_is_redacted_by_default() -> None:
     assert trace["provider"] == "sft"
     assert trace["model_name"] == "kb-sft"
     assert trace["latency_ms"] == 42
+    assert trace["intent_type"] == "operation"
     assert trace["used_citations"] == ["1"]
     assert "query" not in trace
     assert "answer_preview" not in trace

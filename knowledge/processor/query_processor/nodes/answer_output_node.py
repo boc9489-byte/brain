@@ -7,6 +7,7 @@ from knowledge.utils.observability.answer_trace import record_answer_trace
 from knowledge.utils.sse_util import SSEEvent, push_sse_event
 from knowledge.utils.task_util import set_task_result
 from knowledge.prompt.query_prompy import ANSWER_PROMPT
+from knowledge.processor.query_processor.intent import classify_query_intent, normalize_intent
 
 
 class AnswerOutPutNode(BaseNode):
@@ -37,9 +38,11 @@ class AnswerOutPutNode(BaseNode):
             if is_streamed:
                 push_sse_event(task_id=task_id, event=SSEEvent.FINAL, data={})
             else:
+                # 已有答案直接返回时没有 delta 流，需要在 FINAL 中带完整 answer。
                 push_sse_event(task_id=task_id, event=SSEEvent.FINAL, data={"answer": state.get("answer")})
 
         latency_ms = int((time.time() - started_at) * 1000)
+        # 阶段六 trace 是旁路观测，不参与回答生成和任务状态更新。
         record_answer_trace(state, latency_ms=latency_ms, logger=self.logger)
         return state
 
@@ -54,6 +57,7 @@ class AnswerOutPutNode(BaseNode):
         except ConnectionError as exc:
             self.logger.error(f"获取回答模型客户端失败，原因：{exc}")
             state["answer"] = "LLM暂无回答"
+            # 连接失败也要返回稳定结构，避免前端一直等待流式输出。
             if state.get("is_stream"):
                 push_sse_event(task_id=task_id, event=SSEEvent.DELTA, data={"delta": state["answer"]})
             else:
@@ -105,9 +109,14 @@ class AnswerOutPutNode(BaseNode):
 
     def _build_prompt(self, state: Dict[str, Any]) -> str:
         """把 rerank 后的文档拼成回答 prompt。"""
+        # max_context_chars 来自节点配置；没有配置时给一个保守默认值，防止 prompt 无限制膨胀。
         max_context_chars = int(getattr(self.config, "max_context_chars", 6000))
         user_query = state.get("rewritten_query") or state.get("query") or ""
         item_names = state.get("item_names") or []
+        intent_type = normalize_intent(state.get("intent_type") or state.get("intent"))
+        if intent_type == "general":
+            intent_type = classify_query_intent(user_query)
+        state["intent_type"] = intent_type
         retrieval_context = state.get("reranked_docs") or []
         formatted_context, _usage_chars = self._format_retrieval_context(retrieval_context, max_context_chars)
 
@@ -115,6 +124,7 @@ class AnswerOutPutNode(BaseNode):
             context=formatted_context or "暂无检索上下文",
             history="暂无历史上下文",
             item_names=",".join(item_names),
+            intent_type=intent_type,
             question=user_query,
         )
 

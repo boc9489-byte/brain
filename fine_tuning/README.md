@@ -51,6 +51,8 @@ fine_tuning/
 | 文档 | 作用 |
 |---|---|
 | `docs/enterprise_engineering_solution.md` | 企业工程总方案，串联定位、架构、数据、测试、验收和路线图 |
+| `docs/gpu_deployment_runbook.md` | GPU / vLLM / LoRA 上线操作手册 |
+| `docs/release_acceptance_checklist.md` | 发布前、GPU、业务、线上验收清单 |
 | `docs/stage1_execution_plan.md` | 阶段一执行计划，说明边界、命令、风险和增强项 |
 | `docs/code_reading_stage1.md` | 代码阅读文档，说明脚本职责、数据 schema 和主链路关系 |
 | `docs/stage1_engineering_report.md` | 阶段一工程汇报，用于阶段复盘和对外说明 |
@@ -306,10 +308,28 @@ uv run python fine_tuning/scripts/check_stage5_serving.py --health
 
 ```text
 AnswerOutPutNode
+  -> intent_type normalization / fallback classification
   -> record_answer_trace()
   -> fine_tuning/data/online/answer_traces.jsonl
   -> bad case / golden set / next eval
 ```
+
+查询链路会记录粗粒度意图字段 `intent_type`。上游 LLM 商品名提取如果已经输出
+`intent_type`，回答节点会优先使用；如果没有，则使用本地规则分类兜底。当前支持：
+
+```text
+install_config
+troubleshooting
+parameter
+operation
+image_request
+comparison
+after_sales
+general
+```
+
+这个字段会进入回答 prompt 和 answer trace，用于按意图分析召回失败、误拒、缺少引用、
+高延迟等 bad case。
 
 默认关闭：
 
@@ -322,6 +342,7 @@ ANSWER_TRACE_INCLUDE_TEXT=false
 本地检查：
 
 ```bash
+uv run python fine_tuning/tests/test_query_intent.py
 uv run python fine_tuning/scripts/check_stage6_observability.py --check-only
 ```
 

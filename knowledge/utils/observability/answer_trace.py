@@ -15,9 +15,11 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
 from knowledge.utils.client.answer_model_config import AnswerModelSettings
+from knowledge.processor.query_processor.intent import classify_query_intent, normalize_intent
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
+# 多个并发请求可能同时写 trace，进程内用锁保证单行 JSONL 不交错。
 _WRITE_LOCK = threading.Lock()
 
 
@@ -44,6 +46,7 @@ def _repo_path(path: str) -> Path:
 
 
 def _hash_text(text: str) -> str:
+    # 默认只落 hash，既能做去重和 bad case 聚类，又尽量避免明文数据落盘。
     digest = hashlib.sha256((text or "").encode("utf-8")).hexdigest()
     return f"sha256:{digest}"
 
@@ -70,6 +73,7 @@ class AnswerTraceSettings:
         return cls(
             enabled=_bool_env("ANSWER_TRACE_ENABLED", False),
             path=_repo_path(os.getenv("ANSWER_TRACE_PATH", "fine_tuning/data/online/answer_traces.jsonl")),
+            # 明文问题、答案和上下文只在显式开启时写入，线上默认保持脱敏。
             include_text=_bool_env("ANSWER_TRACE_INCLUDE_TEXT", False),
             include_context=_bool_env("ANSWER_TRACE_INCLUDE_CONTEXT", False),
             max_text_chars=max(20, _int_env("ANSWER_TRACE_MAX_TEXT_CHARS", 500)),
@@ -136,6 +140,9 @@ def build_answer_trace(
     answer = state.get("answer") or ""
     prompt = state.get("prompt") or ""
     contexts = state.get("reranked_docs") or []
+    intent_type = normalize_intent(state.get("intent_type") or state.get("intent"))
+    if intent_type == "general":
+        intent_type = classify_query_intent(query)
 
     trace: Dict[str, Any] = {
         "ts": datetime.now(timezone.utc).astimezone().isoformat(),
@@ -150,12 +157,14 @@ def build_answer_trace(
         "answer_chars": len(answer),
         "prompt_chars": len(prompt),
         "context_count": len(contexts),
+        "intent_type": intent_type,
         "used_citations": _citations_in(answer),
         "is_refusal": _is_refusal(answer),
         "has_answer": bool(answer.strip()),
         "error": error,
     }
 
+    # 明文字段分开控制：include_text 用于人工复核问答，include_context 用于定位召回来源。
     if settings.include_text:
         trace["query"] = _truncate(query, settings.max_text_chars)
         trace["answer_preview"] = _truncate(answer, settings.max_text_chars)
@@ -190,6 +199,7 @@ def record_answer_trace(
         settings = AnswerTraceSettings.from_env()
         if not settings.enabled:
             return None
+        # trace 是旁路观测能力，失败不能影响用户拿到回答。
         trace = build_answer_trace(state, latency_ms=latency_ms, settings=settings, error=error)
         write_answer_trace(trace, settings)
         return trace

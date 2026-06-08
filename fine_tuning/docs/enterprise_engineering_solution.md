@@ -481,7 +481,7 @@ uv run python fine_tuning/scripts/check_stage5_serving.py --health
 
 ```text
 1. 默认关闭回答 trace；
-2. 开启后记录 provider、model、延迟、上下文数量、引用、拒答等字段；
+2. 开启后记录 provider、model、延迟、上下文数量、意图、引用、拒答等字段；
 3. 默认只记录 hash 和长度，不记录完整问题/答案；
 4. 从真实 trace 中筛选 bad case，沉淀到 holdout / golden set；
 5. 用阶段四脚本做回归评估，再决定是否重新造数和训练。
@@ -491,10 +491,28 @@ uv run python fine_tuning/scripts/check_stage5_serving.py --health
 
 ```text
 AnswerOutPutNode
+  -> intent_type normalization / fallback classification
   -> record_answer_trace()
   -> fine_tuning/data/online/answer_traces.jsonl
   -> bad case mining
   -> next stage eval / retrain
+```
+
+意图识别策略：
+
+```text
+1. 查询改写 prompt 要求 LLM 同时输出 intent_type；
+2. 回答节点优先使用 state.intent_type；
+3. 如果上游没有给出或给出非法值，则使用本地规则分类兜底；
+4. intent_type 同时进入回答 prompt 和 answer trace；
+5. 后续 bad case 可按安装配置、故障排查、参数查询、图片需求等维度分桶。
+```
+
+当前枚举：
+
+```text
+install_config / troubleshooting / parameter / operation
+image_request / comparison / after_sales / general
 ```
 
 关键环境变量：
