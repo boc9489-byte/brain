@@ -10,7 +10,7 @@ from pymilvus import DataType, MilvusClient
 from langchain_core.messages import SystemMessage, HumanMessage
 from knowledge.processor.import_processor.base import BaseNode, setup_logging
 from knowledge.processor.import_processor.state import ImportGraphState
-from knowledge.processor.import_processor.exceptions import StateFieldError,FileProcessingError, ValidationError, LLMError
+from knowledge.processor.import_processor.exceptions import StateFieldError,FileProcessingError, ValidationError, LLMError, EmbeddingError
 from knowledge.utils.client.ai_clients import AIClients
 from knowledge.prompt.import_prompt import ITEM_NAME_SYSTEM_PROMPT, ITEM_NAME_USER_PROMPT_TEMPLATE
 from knowledge.utils.client.storage_clients import StorageClients
@@ -39,7 +39,7 @@ class ItemNameRecognitionNode(BaseNode):
         item_name = self._recognition_item_name(item_name_context, file_title)
 
         # 向量化
-        dense_vector,sparse_vector = self._embedding_item_name(item_name)
+        dense_vector, sparse_vector = self._embedding_item_name(item_name)
 
         # 入库
         self._insert_milvus(dense_vector, sparse_vector, file_title, item_name)
@@ -85,6 +85,7 @@ class ItemNameRecognitionNode(BaseNode):
             inserted_result = milvus_client.insert(collection_name=item_name_collection_name, data=[item_name_data_row])
         except Exception as e:
             self.logger.error(f"商品名:{item_name}插入失败 {str(e)}")
+            return
         self.logger.info(f"插入的结果:{inserted_result},主键:{inserted_result.get('ids')}")
 
 
@@ -128,7 +129,11 @@ class ItemNameRecognitionNode(BaseNode):
             bge_m3_client: BGEM3EmbeddingFunction = AIClients.get_bge_m3_openai()
         except ConnectionError as e:
             self.logger.error(f"BGE_M3嵌入模型客户端创建失败：{str(e)}")
-            return 
+            raise EmbeddingError(
+                message=f"BGE_M3嵌入模型客户端创建失败：{str(e)}",
+                node_name=self.name,
+                cause=e,
+            ) from e
         
         try:
             vector_result = bge_m3_client.encode_documents(documents=[item_name])
@@ -146,7 +151,11 @@ class ItemNameRecognitionNode(BaseNode):
             return vector_dense,sparse_vector
         except Exception as e:
             self.logger.error(f"BGE_M3嵌入模型计算失败：{item_name} 原因：{str(e)}")
-            return None, None
+            raise EmbeddingError(
+                message=f"BGE_M3嵌入模型计算失败：{item_name} 原因：{str(e)}",
+                node_name=self.name,
+                cause=e,
+            ) from e
 
 
     def _recognition_item_name(self, item_name_context: str, file_title:str):
@@ -171,7 +180,7 @@ class ItemNameRecognitionNode(BaseNode):
             llm_result = llm_response.content.strip('')
             # print(f"{llm_response = }")
             if not llm_result or llm_result == "UNKNOWN":
-                self.logger.error(f"LLM提取商品信息失败, 使用文件名:{file_title}作为商品名  ：{str(e)}")
+                self.logger.error(f"LLM提取商品信息失败, 使用文件名:{file_title}作为商品名")
                 return file_title
             self.logger.info(f"LLM为文档：{file_title} 提取商品名： {llm_result}")
 
